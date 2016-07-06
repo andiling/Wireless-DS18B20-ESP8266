@@ -2,14 +2,35 @@
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 
-#include <OneWireDualPin.h>
+#include "OneWireDualPin.h"
 
 //J6B Informations
-//request structure
+//Configuration Web Pages
+//http://IP/getconfig
+//http://IP/config
+//DS18B20 Request Web Pages
 //http://IP/getList?bus=0
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
-#define VERSION_NUMBER F("1.1")
+
+//Choose ESP-01 version or not
+//For ESP-01, Pins used are restricted
+//Pin 3 (RX) = 1Wire bus input
+//Pin 0 = 1Wire bus output
+//Pin 2 = config Mode button
+//For other models, Pin Numbers and Buses are defined through Configuration Web Page
+#define ESP01_PLATFORM 1
+
+//Choose Serial Speed
+#define SERIAL_SPEED 9600
+
+//Choose Pin used to boot in Config Mode
+#define CONFIG_BTN_PIN 2
+
+
+
+
+#define VERSION_NUMBER F("1.2")
 
 #define MAX_NUMBER_OF_BUSES 4
 #define MAX_TEMP_SENSOR_PER_BUS 15
@@ -66,9 +87,9 @@ bool saveConfig() {
 
   //write owBusesPins couples
   for (int i = 0; i < numberOfBuses; i++) {
-    EEPROM.write(posEEPROM, owBusesPins[2*i]);
+    EEPROM.write(posEEPROM, owBusesPins[2 * i]);
     posEEPROM++;
-    EEPROM.write(posEEPROM, owBusesPins[(2*i)+1]);
+    EEPROM.write(posEEPROM, owBusesPins[(2 * i) + 1]);
     posEEPROM++;
     EEPROM.write(posEEPROM, 0);
     posEEPROM++;
@@ -127,7 +148,7 @@ bool loadConfig() {
   }
   posEEPROM++;
 
-  //read uploadEnabled
+  //read numberOfBuses
   numberOfBuses = EEPROM.read(posEEPROM);
   posEEPROM++;
   //check end char and numberOfBuses value
@@ -139,11 +160,11 @@ bool loadConfig() {
 
   //read owBusesPins
   if (owBusesPins) free(owBusesPins);
-  owBusesPins = new uint8_t[numberOfBuses*2];
+  owBusesPins = new uint8_t[numberOfBuses * 2];
   for (int i = 0; i < numberOfBuses; i++) {
-    owBusesPins[2*i] = EEPROM.read(posEEPROM);
+    owBusesPins[2 * i] = EEPROM.read(posEEPROM);
     posEEPROM++;
-    owBusesPins[(2*i)+1] = EEPROM.read(posEEPROM);
+    owBusesPins[(2 * i) + 1] = EEPROM.read(posEEPROM);
     posEEPROM++;
     if (EEPROM.read(posEEPROM) != 0) {
       EEPROM.end();
@@ -157,6 +178,14 @@ bool loadConfig() {
     EEPROM.end();
     return false;
   }
+
+#if ESP01_PLATFORM
+  numberOfBuses = 1;
+  free(owBusesPins);
+  owBusesPins = new uint8_t[2];
+  owBusesPins[0] = 3;
+  owBusesPins[1] = 0;
+#endif
 
   EEPROM.end();
   return true;
@@ -367,9 +396,9 @@ void handleGetConfig(WiFiClient c) {
   c.print(F("<br>ssid : ")); c.print(ssid);
   c.print(F("<br>numberOfBuses : ")); c.print(numberOfBuses);
   for (int i = 0; i < numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2*i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2*i)+1]);
+    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2 * i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2 * i) + 1]);
   }
-  c.print(F("<br><br>build version : ")); c.print(VERSION_NUMBER);
+  c.print(F("<br><br>build version : ")); c.print(VERSION_NUMBER); if (ESP01_PLATFORM) c.print(F(" (ESP01)"));
   c.print(F("</body></html>"));
 
 }
@@ -394,11 +423,13 @@ void handleConfig(WiFiClient c) {
     <form action='http://"));  c.print(ipAddress);  c.print(F("/submit' method='POST'>\
       APMode: <input type='checkbox' name='APMode'><br>\
       ssid: <input type='text' name='ssid' maxlength='32'><br>\
-      password: <input type='password' name='password' maxlength='64'><br>\
-      number Of OW Bus: <input type='number' min='1' max='")); c.print(MAX_NUMBER_OF_BUSES); c.print(F("' name='numberOfBuses'><br>"));
+      password: <input type='password' name='password' maxlength='64'><br>"));
+#if !ESP01_PLATFORM
+  c.print(F("number Of OW Bus: <input type='number' min='1' max='")); c.print(MAX_NUMBER_OF_BUSES); c.print(F("' name='numberOfBuses'><br>"));
   for (int i = 0; i < MAX_NUMBER_OF_BUSES; i++) {
     c.print(F("bus")); c.print(i); c.print(F(": PinIn <input type='number' name='bus")); c.print(i); c.print(F("PinIn'> PinOut <input type='number' name='bus")); c.print(i); c.print(F("PinOut'><br>"));
   }
+#endif
   c.print(F("<input type='submit' value='Submit Config'>\
     </form>\
     </body></html>"));
@@ -436,6 +467,7 @@ void handleSubmit(WiFiClient c) {
     return;
   }
   tempPassword = findParameterInURLEncodedDatas(postedDatas, F("password"));
+#if !ESP01_PLATFORM
   if (findParameterInURLEncodedDatas(postedDatas, F("numberOfBuses")).length() == 0) {
     c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
     return;
@@ -445,30 +477,33 @@ void handleSubmit(WiFiClient c) {
     c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
     return;
   }
-  tempOwBusesPins = new uint8_t[tempNumberOfBuses*2];
+  tempOwBusesPins = new uint8_t[tempNumberOfBuses * 2];
   for (int i = 0; i < tempNumberOfBuses; i++) {
     if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").length() == 0) {
       c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
       free(tempOwBusesPins);
       return;
     }
-    tempOwBusesPins[2*i] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").toInt();
+    tempOwBusesPins[2 * i] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").toInt();
     if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").length() == 0) {
-      c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+      c.print(F("HTTP/1.1 400 Bad Request5\r\n\r\n"));
       free(tempOwBusesPins);
       return;
     }
-    tempOwBusesPins[(2*i)+1] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").toInt();
+    tempOwBusesPins[(2 * i) + 1] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").toInt();
   }
-
+#endif
 
   //config checked so copy
   APMode = tempAPMode;
   ssid = tempSsid;
   password = tempPassword;
+
+#if !ESP01_PLATFORM
   numberOfBuses = tempNumberOfBuses;
   free(owBusesPins);
   owBusesPins = tempOwBusesPins;
+#endif
 
   //then save
   bool result = saveConfig();
@@ -483,10 +518,12 @@ void handleSubmit(WiFiClient c) {
       <h2>Configuration submission</h2>"));
   c.print(F("APMode : ")); c.print(APMode ? F("on") : F("off"));
   c.print(F("<br>ssid : ")); c.print(ssid);
+#if !ESP01_PLATFORM
   c.print(F("<br>numberOfBuses : ")); c.print(numberOfBuses);
   for (int i = 0; i < numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2*i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2*i)+1]);
+    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2 * i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2 * i) + 1]);
   }
+#endif
   c.print(F("<br><br>Save config result : ")); c.print(result ? F("OK") : F("FAILED!!!"));
   c.print(F("</body></html>"));
 
@@ -519,13 +556,28 @@ void handleGetList(WiFiClient c, String req) {
   //convert busNumber
   int busNumber = strBusNumber[0] - 0x30;
 
+  //check busNumber
+  if (busNumber >= numberOfBuses) {
+    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    return;
+  }
 
   //initializing vars for 1Wire module search
   byte romCodeList[MAX_TEMP_SENSOR_PER_BUS][8];
   byte nbOfRomCode;
 
+#if ESP01_PLATFORM
+  Serial.flush();
+  delay(5);
+  Serial.end();
+#endif
+
   //Search for OneWire Temperature sensor
-  nbOfRomCode = getTempRomCodeList(OneWireDualPin(owBusesPins[2*busNumber],owBusesPins[(2*busNumber)+1]), romCodeList);
+  nbOfRomCode = getTempRomCodeList(OneWireDualPin(owBusesPins[2 * busNumber], owBusesPins[(2 * busNumber) + 1]), romCodeList);
+
+#if ESP01_PLATFORM
+  Serial.begin(SERIAL_SPEED);
+#endif
 
   //Send client answer
   c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
@@ -581,11 +633,17 @@ void handleGetTemp(WiFiClient c, String req) {
   //convert busNumber
   int busNumber = strBusNumber[0] - 0x30;
 
+  //check busNumber
+  if (busNumber >= numberOfBuses) {
+    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    return;
+  }
+
   //try to find ROMCode
   String strROMCode = findParameterInURLEncodedDatas(getDatas, F("ROMCode"));
   //check string found
   if (strROMCode.length() != 16 || !isAlphaNumericString(strROMCode)) {
-    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
     return;
   }
 
@@ -595,13 +653,24 @@ void handleGetTemp(WiFiClient c, String req) {
     romCode[i] = (asciiToHex(strROMCode[i * 2]) * 0x10) + asciiToHex(strROMCode[(i * 2) + 1]);
   }
 
+#if ESP01_PLATFORM
+  Serial.flush();
+  delay(5);
+  Serial.end();
+#endif
+
   //Read Temperature
-  float measuredTemperature = readTemp(OneWireDualPin(owBusesPins[2*busNumber],owBusesPins[(2*busNumber)+1]), romCode);
+  float measuredTemperature = readTemp(OneWireDualPin(owBusesPins[2 * busNumber], owBusesPins[(2 * busNumber) + 1]), romCode);
+
+#if ESP01_PLATFORM
+  Serial.begin(SERIAL_SPEED);
+#endif
 
   if (measuredTemperature == 12.3456F) {
-    c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+    c.print(F("HTTP/1.1 400 Bad Request5\r\n\r\n"));
     return;
   }
+
 
   //Send client answer
   c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
@@ -648,20 +717,29 @@ void handleWifiClient(WiFiClient c) {
 //-----------------------------------------------------------------------
 void setup(void) {
 
-  Serial.begin(9600);
+  Serial.begin(SERIAL_SPEED);
   Serial.println("");
   delay(1000);
 
-  Serial.print(F("J6B Wireless DS18B20 ")); Serial.println(VERSION_NUMBER);
+  Serial.print(F("J6B Wireless DS18B20 ")); Serial.print(VERSION_NUMBER); if (ESP01_PLATFORM) Serial.println(F(" (ESP01)")); else Serial.println("");
   Serial.println(F("---Booting---"));
   Serial.println(F("Wait skip config button for 5 seconds"));
 
+#if ESP01_PLATFORM
   bool skipExistingConfig = false;
   pinMode(2, INPUT_PULLUP);
   for (int i = 0; i < 100 && skipExistingConfig == false; i++) {
     if (digitalRead(2) == LOW) skipExistingConfig = true;
     delay(50);
   }
+#else
+  bool skipExistingConfig = false;
+  pinMode(CONFIG_BTN_PIN, INPUT_PULLUP);
+  for (int i = 0; i < 100 && skipExistingConfig == false; i++) {
+    if (digitalRead(CONFIG_BTN_PIN) == LOW) skipExistingConfig = true;
+    delay(50);
+  }
+#endif
 
   Serial.print(F("Start Config"));
 
@@ -683,7 +761,7 @@ void setup(void) {
   if (APMode) {
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid.c_str(), password.c_str());
-    Serial.println(F(" : OK (AP mode)"));
+    Serial.println(F(" : OK (AP mode 192.168.4.1)"));
   }
   else {
     WiFi.mode(WIFI_STA);
@@ -702,7 +780,7 @@ void setup(void) {
   Serial.print(F("Start OTA"));
 
   //Setup and Start OTA
-  ArduinoOTA.setPassword((const char *)"Password01");
+  ArduinoOTA.setPassword((const char *)"PasswordDS18B20");
   ArduinoOTA.onStart([]() {
     Serial.println(F("-OTAStart-"));
   });
@@ -721,9 +799,19 @@ void setup(void) {
 
   Serial.print(F(" : OK\r\nStart OneWire"));
 
+#if ESP01_PLATFORM
+  Serial.flush();
+  delay(5);
+  Serial.end();
+#endif
+
   for (byte i = 0; i < numberOfBuses; i++) {
-    setupTempSensors(OneWireDualPin(owBusesPins[2*i],owBusesPins[(2*i)+1]));
+    setupTempSensors(OneWireDualPin(owBusesPins[2 * i], owBusesPins[(2 * i) + 1]));
   }
+
+#if ESP01_PLATFORM
+  Serial.begin(SERIAL_SPEED);
+#endif
 
   Serial.print(F(" : OK\r\nStart WebServer"));
 
