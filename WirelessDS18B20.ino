@@ -2,26 +2,26 @@
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 
-#include <OneWire.h>
+#include <OneWireDualPin.h>
 
 //J6B Informations
 //request structure
 //http://IP/getList?bus=0
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
-#define VERSION_NUMBER F("1.0")
+#define VERSION_NUMBER F("1.1")
 
-#define MAX_NUMBER_OF_BUSES 8
+#define MAX_NUMBER_OF_BUSES 4
 #define MAX_TEMP_SENSOR_PER_BUS 15
 //Config -----------------
 bool APMode = true; //1+1B
 String ssid = "WirelessDS18B20"; //32+1B
 String password = "Password01"; //64+1B
 byte numberOfBuses = 0; //1+1B
-uint8_t* owBusesPins; //1+1B * MAX_NUMBER_OF_BUSES
+uint8_t* owBusesPins; //2+1B * MAX_NUMBER_OF_BUSES
 
 //EEPROM required size is sum of Config Settings + 1 additionnal byte
-#define EEPROM_SIZE 119
+#define EEPROM_SIZE 115
 
 //WiFiServer
 WiFiServer server(80);
@@ -64,9 +64,11 @@ bool saveConfig() {
   EEPROM.write(posEEPROM, 0);
   posEEPROM++;
 
-  //write owBusesPins
+  //write owBusesPins couples
   for (int i = 0; i < numberOfBuses; i++) {
-    EEPROM.write(posEEPROM, owBusesPins[i]);
+    EEPROM.write(posEEPROM, owBusesPins[2*i]);
+    posEEPROM++;
+    EEPROM.write(posEEPROM, owBusesPins[(2*i)+1]);
     posEEPROM++;
     EEPROM.write(posEEPROM, 0);
     posEEPROM++;
@@ -137,9 +139,11 @@ bool loadConfig() {
 
   //read owBusesPins
   if (owBusesPins) free(owBusesPins);
-  owBusesPins = new uint8_t[numberOfBuses];
+  owBusesPins = new uint8_t[numberOfBuses*2];
   for (int i = 0; i < numberOfBuses; i++) {
-    owBusesPins[i] = EEPROM.read(posEEPROM);
+    owBusesPins[2*i] = EEPROM.read(posEEPROM);
+    posEEPROM++;
+    owBusesPins[(2*i)+1] = EEPROM.read(posEEPROM);
     posEEPROM++;
     if (EEPROM.read(posEEPROM) != 0) {
       EEPROM.end();
@@ -161,7 +165,7 @@ bool loadConfig() {
 //
 //-----------------------------------------------------------------------
 // DS18X20 Read ScratchPad command
-boolean readScratchPad(OneWire ds, byte addr[], byte data[]) {
+boolean readScratchPad(OneWireDualPin ds, byte addr[], byte data[]) {
 
   boolean crcScratchPadOK;
 
@@ -176,7 +180,7 @@ boolean readScratchPad(OneWire ds, byte addr[], byte data[]) {
     for (byte j = 0; j < 9; j++) { // read 9 bytes
       data[j] = ds.read();
     }
-    if (OneWire::crc8(data, 8) == data[8]) {
+    if (OneWireDualPin::crc8(data, 8) == data[8]) {
       crcScratchPadOK = true;
       i = 3; //end for loop
     }
@@ -186,7 +190,7 @@ boolean readScratchPad(OneWire ds, byte addr[], byte data[]) {
 }
 //------------------------------------------
 // DS18X20 Write ScratchPad command
-void writeScratchPad(OneWire ds, byte addr[], byte th, byte tl, byte cfg) {
+void writeScratchPad(OneWireDualPin ds, byte addr[], byte th, byte tl, byte cfg) {
 
   ds.reset();
   ds.select(addr);
@@ -197,7 +201,7 @@ void writeScratchPad(OneWire ds, byte addr[], byte th, byte tl, byte cfg) {
 }
 //------------------------------------------
 // DS18X20 Copy ScratchPad command
-void copyScratchPad(OneWire ds, byte addr[]) {
+void copyScratchPad(OneWireDualPin ds, byte addr[]) {
 
   ds.reset();
   ds.select(addr);
@@ -205,14 +209,14 @@ void copyScratchPad(OneWire ds, byte addr[]) {
 }
 //------------------------------------------
 // DS18X20 Start Temperature conversion
-void startConvertT(OneWire ds, byte addr[]) {
+void startConvertT(OneWireDualPin ds, byte addr[]) {
   ds.reset();
   ds.select(addr);
   ds.write(0x44); // start conversion
 }
 //------------------------------------------
 // Function to initialize DS18X20 sensor
-void setupTempSensors(OneWire ds) {
+void setupTempSensors(OneWireDualPin ds) {
 
   byte i, j;
   byte addr[8];
@@ -223,7 +227,7 @@ void setupTempSensors(OneWire ds) {
   while (ds.search(addr)) {
 
     //if ROM received is incorrect or not a DS1822 or DS18B20 THEN continue to next device
-    if ((OneWire::crc8(addr, 7) != addr[7]) || (addr[0] != 0x22 && addr[0] != 0x28)) continue;
+    if ((OneWireDualPin::crc8(addr, 7) != addr[7]) || (addr[0] != 0x22 && addr[0] != 0x28)) continue;
 
     scratchPadReaded = readScratchPad(ds, addr, data);
     //if scratchPad read failed then continue to next 1-Wire device
@@ -246,7 +250,7 @@ void setupTempSensors(OneWire ds) {
 }
 //------------------------------------------
 // function that get temperature from a DS18X20 (run convertion, get scratchpad then calculate temperature)
-float readTemp(OneWire ds, byte addr[]) {
+float readTemp(OneWireDualPin ds, byte addr[]) {
 
   byte i, j;
   byte data[12];
@@ -293,7 +297,7 @@ byte charToHexByte(char c) {
 }
 //------------------------------------------
 // Get an array of DS18X20 sensor ROMCode (stored in array param) and return number of ROMCode found
-byte getTempRomCodeList(OneWire ds, byte array[][8]) {
+byte getTempRomCodeList(OneWireDualPin ds, byte array[][8]) {
 
   byte nbFound = 0;
 
@@ -302,7 +306,7 @@ byte getTempRomCodeList(OneWire ds, byte array[][8]) {
   while (ds.search(array[nbFound]) && nbFound < MAX_TEMP_SENSOR_PER_BUS) {
 
     //if ROM received is incorrect or not a Temperature sensor THEN continue to next device
-    if ((OneWire::crc8(array[nbFound], 7) != array[nbFound][7]) || (array[nbFound][0] != 0x10 && array[nbFound][0] != 0x22 && array[nbFound][0] != 0x28)) continue;
+    if ((OneWireDualPin::crc8(array[nbFound], 7) != array[nbFound][7]) || (array[nbFound][0] != 0x10 && array[nbFound][0] != 0x22 && array[nbFound][0] != 0x28)) continue;
 
     nbFound++;
   }
@@ -363,9 +367,9 @@ void handleGetConfig(WiFiClient c) {
   c.print(F("<br>ssid : ")); c.print(ssid);
   c.print(F("<br>numberOfBuses : ")); c.print(numberOfBuses);
   for (int i = 0; i < numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F("Pin : ")); c.print(owBusesPins[i]);
+    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2*i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2*i)+1]);
   }
-  c.print(F("<br><br>build version : "));c.print(VERSION_NUMBER);
+  c.print(F("<br><br>build version : ")); c.print(VERSION_NUMBER);
   c.print(F("</body></html>"));
 
 }
@@ -393,7 +397,7 @@ void handleConfig(WiFiClient c) {
       password: <input type='password' name='password' maxlength='64'><br>\
       number Of OW Bus: <input type='number' min='1' max='")); c.print(MAX_NUMBER_OF_BUSES); c.print(F("' name='numberOfBuses'><br>"));
   for (int i = 0; i < MAX_NUMBER_OF_BUSES; i++) {
-    c.print(F("bus")); c.print(i); c.print(F("Pin: <input type='number' name='bus")); c.print(i); c.print(F("Pin'><br>"));
+    c.print(F("bus")); c.print(i); c.print(F(": PinIn <input type='number' name='bus")); c.print(i); c.print(F("PinIn'> PinOut <input type='number' name='bus")); c.print(i); c.print(F("PinOut'><br>"));
   }
   c.print(F("<input type='submit' value='Submit Config'>\
     </form>\
@@ -441,14 +445,20 @@ void handleSubmit(WiFiClient c) {
     c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
     return;
   }
-  tempOwBusesPins = new uint8_t[tempNumberOfBuses];
+  tempOwBusesPins = new uint8_t[tempNumberOfBuses*2];
   for (int i = 0; i < tempNumberOfBuses; i++) {
-    if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "Pin").length() == 0) {
+    if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").length() == 0) {
       c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
       free(tempOwBusesPins);
       return;
     }
-    tempOwBusesPins[i] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "Pin").toInt();
+    tempOwBusesPins[2*i] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").toInt();
+    if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").length() == 0) {
+      c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+      free(tempOwBusesPins);
+      return;
+    }
+    tempOwBusesPins[(2*i)+1] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").toInt();
   }
 
 
@@ -475,7 +485,7 @@ void handleSubmit(WiFiClient c) {
   c.print(F("<br>ssid : ")); c.print(ssid);
   c.print(F("<br>numberOfBuses : ")); c.print(numberOfBuses);
   for (int i = 0; i < numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F("Pin : ")); c.print(owBusesPins[i]);
+    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(owBusesPins[2*i]); c.print(F(" - PinOut = ")); c.print(owBusesPins[(2*i)+1]);
   }
   c.print(F("<br><br>Save config result : ")); c.print(result ? F("OK") : F("FAILED!!!"));
   c.print(F("</body></html>"));
@@ -515,7 +525,7 @@ void handleGetList(WiFiClient c, String req) {
   byte nbOfRomCode;
 
   //Search for OneWire Temperature sensor
-  nbOfRomCode = getTempRomCodeList(OneWire(owBusesPins[busNumber]), romCodeList);
+  nbOfRomCode = getTempRomCodeList(OneWireDualPin(owBusesPins[2*busNumber],owBusesPins[(2*busNumber)+1]), romCodeList);
 
   //Send client answer
   c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
@@ -586,7 +596,7 @@ void handleGetTemp(WiFiClient c, String req) {
   }
 
   //Read Temperature
-  float measuredTemperature = readTemp(OneWire(owBusesPins[busNumber]), romCode);
+  float measuredTemperature = readTemp(OneWireDualPin(owBusesPins[2*busNumber],owBusesPins[(2*busNumber)+1]), romCode);
 
   if (measuredTemperature == 12.3456F) {
     c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
@@ -642,7 +652,7 @@ void setup(void) {
   Serial.println("");
   delay(1000);
 
-  Serial.print(F("J6B Wireless DS18B20 "));Serial.println(VERSION_NUMBER);
+  Serial.print(F("J6B Wireless DS18B20 ")); Serial.println(VERSION_NUMBER);
   Serial.println(F("---Booting---"));
   Serial.println(F("Wait skip config button for 5 seconds"));
 
@@ -652,9 +662,6 @@ void setup(void) {
     if (digitalRead(2) == LOW) skipExistingConfig = true;
     delay(50);
   }
-
-  //TODO need to be handled differently
-  //if (!SPIFFS.exists("/config.json")) saveConfig();
 
   Serial.print(F("Start Config"));
 
@@ -715,7 +722,7 @@ void setup(void) {
   Serial.print(F(" : OK\r\nStart OneWire"));
 
   for (byte i = 0; i < numberOfBuses; i++) {
-    setupTempSensors(OneWire(owBusesPins[i]));
+    setupTempSensors(OneWireDualPin(owBusesPins[2*i],owBusesPins[(2*i)+1]));
   }
 
   Serial.print(F(" : OK\r\nStart WebServer"));
