@@ -9,7 +9,10 @@
 //http://IP/getList?bus=0
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
+#define VERSION_NUMBER F("1.0")
+
 #define MAX_NUMBER_OF_BUSES 8
+#define MAX_TEMP_SENSOR_PER_BUS 15
 //Config -----------------
 bool APMode = true; //1+1B
 String ssid = "WirelessDS18B20"; //32+1B
@@ -258,7 +261,7 @@ float readTemp(OneWire ds, byte addr[]) {
 
   scratchPadReaded = readScratchPad(ds, addr, data);
   //if read of scratchpad failed 3 times then return special fake value
-  if (!scratchPadReaded) return 12.34;
+  if (!scratchPadReaded) return 12.3456;
 
 
   // Convert the data to actual temperature
@@ -296,7 +299,7 @@ byte getTempRomCodeList(OneWire ds, byte array[][8]) {
 
   ds.reset_search();
 
-  while (ds.search(array[nbFound])) {
+  while (ds.search(array[nbFound]) && nbFound < MAX_TEMP_SENSOR_PER_BUS) {
 
     //if ROM received is incorrect or not a Temperature sensor THEN continue to next device
     if ((OneWire::crc8(array[nbFound], 7) != array[nbFound][7]) || (array[nbFound][0] != 0x10 && array[nbFound][0] != 0x22 && array[nbFound][0] != 0x28)) continue;
@@ -309,35 +312,12 @@ byte getTempRomCodeList(OneWire ds, byte array[][8]) {
 //-----------------------------------------------------------------------
 // Configuration Webpages functions
 //-----------------------------------------------------------------------
-// return True if s contain only decimal figure
-boolean isNumericString(String s) {
-
-  if (s.length() == 0) return false;
-  for (byte i = 0; i < s.length(); i++) {
-    if (s[i] < '0' || s[i] > '9') return false;
-  }
-  return true;
-}
-//------------------------------------------
-// return True if s contain only hexadecimal figure
-boolean isAlphaNumericString(String s) {
-
-  if (s.length() == 0) return false;
-  String sLowerCase = s;
-  sLowerCase.toLowerCase();
-  for (byte i = 0; i < sLowerCase.length(); i++) {
-
-    if ((sLowerCase[i] < '0' || sLowerCase[i] > '9') && (sLowerCase[i] < 'a' || sLowerCase[i] > 'f')) return false;
-  }
-  return true;
-}
-//------------------------------------------
 byte asciiToHex(char c) {
   return (c < 0x3A) ? (c - 0x30) : (c > 0x60 ? c - 0x57 : c - 0x37);
 }
 //------------------------------------------
-// Function that lookup in POSTed Datas to find a parameter and then return the corresponding decoded value
-String findParameterInPostedDatas(String datas, String parameterToFind) {
+// Function that lookup in Datas to find a parameter and then return the corresponding decoded value
+String findParameterInURLEncodedDatas(String datas, String parameterToFind) {
 
   String res = "";
 
@@ -348,7 +328,7 @@ String findParameterInPostedDatas(String datas, String parameterToFind) {
   if (posParam == -1) return res;
 
   //if previous char is not a separator then lookup for the next match
-  if (posParam != 0 && datas[posParam - 1] != '&') return findParameterInPostedDatas(datas.substring(posParam + parameterToFind.length()), parameterToFind);
+  if (posParam != 0 && datas[posParam - 1] != '&') return findParameterInURLEncodedDatas(datas.substring(posParam + parameterToFind.length()), parameterToFind);
 
   //now we can extract the value and decode it at the same time
   //adujst position to the start of the value
@@ -369,14 +349,15 @@ String findParameterInPostedDatas(String datas, String parameterToFind) {
 void handleGetConfig(WiFiClient c) {
 
   //DEBUG
-  Serial.println("handleGetConfig");
+  Serial.println(F("handleGetConfig"));
 
   c.print(F("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
 
   c.print(F("<html>\
       <head><title>J6B Wireless DS18B20</title></head>\
-      <body style='background-color: #cccccc; Color: #000088;font-family: Arial;'>\
-        <h1>Current Configuration</h1>"));
+      <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
+      <h1>J6B Wireless DS18B20</h1>\
+        <h2>Current Configuration</h2>"));
 
   c.print(F("APMode : ")); c.print(APMode ? F("on") : F("off"));
   c.print(F("<br>ssid : ")); c.print(ssid);
@@ -384,6 +365,7 @@ void handleGetConfig(WiFiClient c) {
   for (int i = 0; i < numberOfBuses; i++) {
     c.print(F("<br>bus")); c.print(i); c.print(F("Pin : ")); c.print(owBusesPins[i]);
   }
+  c.print(F("<br><br>build version : "));c.print(VERSION_NUMBER);
   c.print(F("</body></html>"));
 
 }
@@ -391,7 +373,7 @@ void handleGetConfig(WiFiClient c) {
 void handleConfig(WiFiClient c) {
 
   //DEBUG
-  Serial.println("handleConfig");
+  Serial.println(F("handleConfig"));
 
   //prepare submit url ip address
   String ipAddress;
@@ -402,8 +384,9 @@ void handleConfig(WiFiClient c) {
 
   c.print(F("<html>\
     <head><title>J6B Wireless DS18B20</title></head>\
-    <body style='background-color: #cccccc; Color: #000088;font-family: Arial;'>\
-    <h1>Configuration WebPage</h1>\
+    <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
+    <h1>J6B Wireless DS18B20</h1>\
+    <h2>Configuration WebPage</h2>\
     <form action='http://"));  c.print(ipAddress);  c.print(F("/submit' method='POST'>\
       APMode: <input type='checkbox' name='APMode'><br>\
       ssid: <input type='text' name='ssid' maxlength='32'><br>\
@@ -430,7 +413,7 @@ void handleSubmit(WiFiClient c) {
   uint8_t* tempOwBusesPins;
 
   //DEBUG
-  Serial.println("handleSubmit");
+  Serial.println(F("handleSubmit"));
 
   //Find line with POSTed datas
   while (c.available() && !postedDatas.startsWith(F("\nssid=")) && !postedDatas.startsWith(F("\nAPMode="))) {
@@ -442,30 +425,30 @@ void handleSubmit(WiFiClient c) {
   else postedDatas = postedDatas.substring(1); //else remove the first \n
 
   //Parse Parameters
-  if (findParameterInPostedDatas(postedDatas, F("APMode")) == "on") tempAPMode = true;
-  tempSsid = findParameterInPostedDatas(postedDatas, F("ssid"));
+  if (findParameterInURLEncodedDatas(postedDatas, F("APMode")) == "on") tempAPMode = true;
+  tempSsid = findParameterInURLEncodedDatas(postedDatas, F("ssid"));
   if (tempSsid.length() == 0) {
-    c.print(F("HTTP/1.1 400 Bad Request\r\n\r\n"));
+    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
     return;
   }
-  tempPassword = findParameterInPostedDatas(postedDatas, F("password"));
-  if (findParameterInPostedDatas(postedDatas, F("numberOfBuses")).length() == 0) {
-    c.print(F("HTTP/1.1 400 Bad Request\r\n\r\n"));
+  tempPassword = findParameterInURLEncodedDatas(postedDatas, F("password"));
+  if (findParameterInURLEncodedDatas(postedDatas, F("numberOfBuses")).length() == 0) {
+    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
     return;
   }
-  tempNumberOfBuses = findParameterInPostedDatas(postedDatas, F("numberOfBuses")).toInt() - 0x30;
+  tempNumberOfBuses = findParameterInURLEncodedDatas(postedDatas, F("numberOfBuses")).toInt();
   if (tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
-    c.print(F("HTTP/1.1 400 Bad Request\r\n\r\n"));
+    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
     return;
   }
   tempOwBusesPins = new uint8_t[tempNumberOfBuses];
   for (int i = 0; i < tempNumberOfBuses; i++) {
-    if (findParameterInPostedDatas(postedDatas, String("bus") + i + "Pin").length() == 0) {
-      c.print(F("HTTP/1.1 400 Bad Request\r\n\r\n"));
+    if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "Pin").length() == 0) {
+      c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
       free(tempOwBusesPins);
       return;
     }
-    tempOwBusesPins[i] = findParameterInPostedDatas(postedDatas, String("bus") + i + "Pin").toInt() - 0x30;
+    tempOwBusesPins[i] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "Pin").toInt();
   }
 
 
@@ -485,8 +468,9 @@ void handleSubmit(WiFiClient c) {
 
   c.print(F("<html>\
       <head><title>J6B Wireless TeleInfo</title></head>\
-      <body style='background-color: #cccccc; Color: #000088;font-family: Arial;'>\
-      <h1>Configuration submission</h1>"));
+      <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
+      <h1>J6B Wireless DS18B20</h1>\
+      <h2>Configuration submission</h2>"));
   c.print(F("APMode : ")); c.print(APMode ? F("on") : F("off"));
   c.print(F("<br>ssid : ")); c.print(ssid);
   c.print(F("<br>numberOfBuses : ")); c.print(numberOfBuses);
@@ -500,82 +484,123 @@ void handleSubmit(WiFiClient c) {
   ESP.reset();
 }
 //------------------------------------------
-//TODO
 void handleGetList(WiFiClient c, String req) {
 
-  if (!server.hasArg("bus") || !isNumericString(server.arg("bus"))) {
-    sendHTTPAnswer404();
+  //DEBUG
+  Serial.println(F("getList"));
+
+  //check for ? in the url request
+  if (req.indexOf('?') == -1 || req.indexOf('?') == (req.length() - 1)) {
+    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
     return;
   }
-  int busNumber = server.arg("bus").toInt();
-  if (busNumber >= numberOfBuses) {
-    sendHTTPAnswer404();
+  //keep only the part after '?' and before the final HTTP/1.1
+  String getDatas = req.substring(req.indexOf('?') + 1);
+  getDatas = getDatas.substring(0, getDatas.indexOf(' '));
+
+  //try to find busNumber
+  String strBusNumber = findParameterInURLEncodedDatas(getDatas, F("bus"));
+  //check string found
+  if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
+    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
     return;
   }
 
-  //initializing vars
-  byte romCodeList[15][8];
+  //convert busNumber
+  int busNumber = strBusNumber[0] - 0x30;
+
+
+  //initializing vars for 1Wire module search
+  byte romCodeList[MAX_TEMP_SENSOR_PER_BUS][8];
   byte nbOfRomCode;
 
   //Search for OneWire Temperature sensor
   nbOfRomCode = getTempRomCodeList(OneWire(owBusesPins[busNumber]), romCodeList);
 
-  //build JSON structure
-  String json = "{\r\n\t\"TemperatureSensorList\": [\r\n";
+  //Send client answer
+  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
+
+  //send JSON structure
+  c.print(F("{\r\n\t\"TemperatureSensorList\": [\r\n"));
   //populate ROMCode in JSON structure
   for (byte i = 0; i < nbOfRomCode; i++) {
-    json += "\t\t\"";
+    c.print(F("\t\t\""));
     for (byte j = 0; j < 8; j++) {
       String s = String(romCodeList[i][j], HEX);
-      json += (s.length() == 1 ? String("0") + s : s);
+      c.print(s.length() == 1 ? String("0") + s : s);
     }
-    json += "\"";
-    if (i < nbOfRomCode - 1) json += ",";
-    json += "\r\n";
+    if (i < nbOfRomCode - 1) c.print(F("\",\r\n"));
+    else c.print(F("\"\r\n"));
   }
   //Finalize JSON structure
-  json += "\t]\r\n}\r\n";
-
-  //Send JSON to client
-  sendHTTPAnswerJSON(json);
-
+  c.print(F("\t]\r\n}\r\n"));
 }
 //------------------------------------------
-//TODO
+// return True if s contain only hexadecimal figure
+boolean isAlphaNumericString(String s) {
+
+  if (s.length() == 0) return false;
+  for (int i = 0; i < s.length(); i++) {
+    if (s[i] < 0x30 || (s[i] > 0x39 && s[i] < 0x41) || (s[i] > 0x46 && s[i] < 0x61) || s[i] > 0x66) return false;
+  }
+  return true;
+}
+//------------------------------------------
 void handleGetTemp(WiFiClient c, String req) {
 
-  if (!server.hasArg("bus") || !isNumericString(server.arg("bus"))) {
-    sendHTTPAnswer404();
+  //DEBUG
+  Serial.println(F("getTemp"));
+
+  //check for ? in the url request
+  if (req.indexOf('?') == -1 || req.indexOf('?') == (req.length() - 1)) {
+    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
     return;
   }
-  int busNumber = server.arg("bus").toInt();
-  if (busNumber >= numberOfBuses) {
-    sendHTTPAnswer404();
+  //keep only the part after '?' and before the final HTTP/1.1
+  String getDatas = req.substring(req.indexOf('?') + 1);
+  getDatas = getDatas.substring(0, getDatas.indexOf(' '));
+
+  //try to find busNumber
+  String strBusNumber = findParameterInURLEncodedDatas(getDatas, F("bus"));
+  //check string found
+  if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
+    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
     return;
   }
 
-  //Check ROMCode Parameter
-  if (!server.hasArg("ROMCode") || server.arg("ROMCode").length() != 16 || !isAlphaNumericString(server.arg("ROMCode"))) {
-    sendHTTPAnswer404();
+  //convert busNumber
+  int busNumber = strBusNumber[0] - 0x30;
+
+  //try to find ROMCode
+  String strROMCode = findParameterInURLEncodedDatas(getDatas, F("ROMCode"));
+  //check string found
+  if (strROMCode.length() != 16 || !isAlphaNumericString(strROMCode)) {
+    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
     return;
   }
-
-  //Get ROMCode string
-  String romCodeValue = server.arg("ROMCode");
 
   //Parse ROMCode
   byte romCode[8];
   for (byte i = 0; i < 8; i++) {
-    romCode[i] = (charToHexByte(romCodeValue[i * 2]) * 0x10) + charToHexByte(romCodeValue[(i * 2) + 1]);
+    romCode[i] = (asciiToHex(strROMCode[i * 2]) * 0x10) + asciiToHex(strROMCode[(i * 2) + 1]);
   }
 
-  //build JSON structure while including temperature reading
-  String json = "{\r\n\t\"Temperature\": ";
-  json += String(readTemp(OneWire(owBusesPins[busNumber]), romCode), 2);
-  json += "\r\n}\r\n";
+  //Read Temperature
+  float measuredTemperature = readTemp(OneWire(owBusesPins[busNumber]), romCode);
 
-  //Send JSON to client
-  sendHTTPAnswerJSON(json);
+  if (measuredTemperature == 12.3456F) {
+    c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+    return;
+  }
+
+  //Send client answer
+  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
+
+  //build JSON structure while including temperature reading
+  c.print(F("{\r\n\t\"Temperature\": "));
+  c.print(String(measuredTemperature, 2));
+  c.print(F("\r\n}\r\n"));
+
 }
 
 //------------------------------------------
@@ -601,8 +626,8 @@ void handleWifiClient(WiFiClient c) {
   if (req.startsWith(F("GET /getconfig HTTP/1."))) handleGetConfig(c);
   if (req.startsWith(F("GET /config HTTP/1."))) handleConfig(c);
   if (req.startsWith(F("POST /submit HTTP/1."))) handleSubmit(c);
-  if (req.startsWith(F("GET /getList"))) handleGetList(c, req);
-  if (req.startsWith(F("GET /getTemp"))) handleGetTemp(c, req);
+  if (req.startsWith(F("GET /getList?"))) handleGetList(c, req);
+  if (req.startsWith(F("GET /getTemp?"))) handleGetTemp(c, req);
 
   c.flush();
   c.stop();
@@ -617,7 +642,7 @@ void setup(void) {
   Serial.println("");
   delay(1000);
 
-  Serial.println(F("J6B Wireless DS18B20 v0.8"));
+  Serial.print(F("J6B Wireless DS18B20 "));Serial.println(VERSION_NUMBER);
   Serial.println(F("---Booting---"));
   Serial.println(F("Wait skip config button for 5 seconds"));
 
