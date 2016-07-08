@@ -1,6 +1,7 @@
 # WirelessDS18B20
-This project use an ESP8266 and some DS18B20 (a 1-wire bus) to provide temperatures to Jeedom.
+This project use an ESP8266 and some DS18B20 (a 1-wire bus) to provide temperatures in JSON format (Jeedom compatible).
 
+###1-Wire bus
 In order to get a wide 1-Wire bus (one that cover a house), Dallas provides some recommendations into their application note AN148.
 
 I choosed this schematic to drive my bus : 
