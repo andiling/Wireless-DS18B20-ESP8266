@@ -20,6 +20,7 @@ If you planned to use a different ESP-8266 model, you will be able to configure 
 Usage : 
 
 `http://IP/getList?bus=0` will return list of DS18B20 ROMCodes available on the first 1-Wire bus
+
 `http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071` will return simple JSON with temperature from the sensor
 
 Configuration : 
