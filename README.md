@@ -14,7 +14,7 @@ This one requires a pin for reading the bus state and another one as output to d
 
 **Recommendation : If you build a large 1 Wire bus inside your house, keep in mind that some high voltage may appear on this one by induction. You need to have a good knowledge about electricity and associated risks!!!**
 
-##Then build your WirelessDS18B20
+##Build your WirelessDS18B20
 
 
 
@@ -51,15 +51,25 @@ Usage (answers are in JSON format):
 ##Jeedom Configuration
 
 For this configuration you need the *Script* plugin installed from the market : 
+
 ![Script Icon](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptIcon.png)
+
 Go to script plugin then add a new equipment: 
+
 ![Script Add](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptAdd.png)
+
 Name it : 
+
 ![Script Name](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptName.png)
+
 Set refresh time (every minutes in my case) : 
+
 ![Script Refresh](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptRefresh.png)
+
 Then into command tab, add a script command : 
+
 ![Script Command](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptCmd.png)
+
 Then set it up with : 
 
  - command name : Temperature
@@ -71,4 +81,5 @@ Then set it up with :
 ![Script Command Config](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptCmdConfig.png)
 
 Now you're done and should get something like this : 
+
 ![Script Command Result](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptResult.png)
