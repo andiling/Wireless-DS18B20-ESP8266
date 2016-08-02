@@ -10,13 +10,15 @@ I choosed this schematic to drive my bus :
 
 This one requires a pin for reading the bus state and another one as output to drive the bus low : I named it the "Dual Pin OneWire"
 
+Recommendation : If you build a large 1 Wire bus inside your house, keep in my that some high voltage may appear on this one by induction. You need to have a good knoledge about electricity and associated risks!!!
+
 ##The WirelessDS18B20 project
 
 The global idea of this project is that any system (like Jeedom) that's able to do an HTTP GET request and interpret JSON will get list of DS18B20 ROMcode available on buses or current temperature of a DS18B20 sensor.
 
 ###Schematic
 
-TODO
+![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.png)
 
 ###Code
 Source code can be compiled for ESP-01 and so Pins usage is fixed like in schematic.
