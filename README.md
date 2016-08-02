@@ -1,5 +1,5 @@
 # WirelessDS18B20
-This project use an ESP8266 and some DS18B20 (a 1-wire bus) to provide temperatures in JSON format (Jeedom compatible).
+This project use an ESP8266 and some DS18B20 sensors (on a 1-wire bus) to provide temperatures in JSON format (Jeedom compatible).
 
 ###1-Wire bus
 In order to get a wide 1-Wire bus (one that cover a house), Dallas provides some recommendations into their application note AN148.
@@ -10,7 +10,7 @@ I choosed this schematic to drive my bus :
 
 This one requires a pin for reading the bus state and another one as output to drive the bus low : I named it the "Dual Pin OneWire"
 
-Recommendation : If you build a large 1 Wire bus inside your house, keep in my that some high voltage may appear on this one by induction. You need to have a good knoledge about electricity and associated risks!!!
+**Recommendation : If you build a large 1 Wire bus inside your house, keep in mind that some high voltage may appear on this one by induction. You need to have a good knowledge about electricity and associated risks!!!**
 
 ##The WirelessDS18B20 project
 
@@ -21,8 +21,11 @@ The global idea of this project is that any system (like Jeedom) that's able to 
 ![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.png)
 
 ###Code
-Source code can be compiled for ESP-01 and so Pins usage is fixed like in schematic.
-If you planned to use a different ESP-8266 model, you will be able to configure pins in configuration webpage
+Source code can be compiled for :
+
+ - ESP-01 : Pin usage is fixed like in schematic.
+ - other ESP8266 models : 1-Wire buses pins can be configured through the configuration webpage
+
 
 ###How does it work
 
