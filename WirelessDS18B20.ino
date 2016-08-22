@@ -503,6 +503,12 @@ void handleSubmit(WiFiClient c) {
   numberOfBuses = tempNumberOfBuses;
   free(owBusesPins);
   owBusesPins = tempOwBusesPins;
+#else
+  numberOfBuses = 1;
+  free(owBusesPins);
+  owBusesPins = new uint8_t[2];
+  owBusesPins[0] = 3;
+  owBusesPins[1] = 0;
 #endif
 
   //then save
@@ -834,6 +840,5 @@ void loop(void) {
   }
   yield();
 }
-
 
 
