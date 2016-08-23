@@ -106,14 +106,21 @@ bool saveConfig() {
 //------------------------------------------
 bool loadConfig() {
 
+  //temp variable
+  bool tempAPMode = false;
+  String tempSsid = "";
+  String tempPassword = "";
+  byte tempNumberOfBuses = 0;
+  uint8_t* tempOwBusesPins;
+
   int posEEPROM = 0;
 
   //Start EEPROM operation
   EEPROM.begin(EEPROM_SIZE);
 
   //read APMode
-  if (EEPROM.read(posEEPROM) == 0x31) APMode = true;
-  else APMode = false;
+  if (EEPROM.read(posEEPROM) == 0x31) tempAPMode = true;
+  else tempAPMode = false;
   posEEPROM++;
   //check end char
   if (EEPROM.read(posEEPROM) != 0) {
@@ -125,7 +132,7 @@ bool loadConfig() {
   //read ssid
   ssid = "";
   while (EEPROM.read(posEEPROM) != 0 && posEEPROM < EEPROM_SIZE) {
-    ssid += (char)EEPROM.read(posEEPROM);
+    tempSsid += (char)EEPROM.read(posEEPROM);
     posEEPROM++;
   }
   //check that we didn't reach end of EEPROM
@@ -138,7 +145,7 @@ bool loadConfig() {
   //read password
   password = "";
   while (EEPROM.read(posEEPROM) != 0 && posEEPROM < EEPROM_SIZE) {
-    password += (char)EEPROM.read(posEEPROM);
+    tempPassword += (char)EEPROM.read(posEEPROM);
     posEEPROM++;
   }
   //check that we didn't reach end of EEPROM
@@ -149,22 +156,21 @@ bool loadConfig() {
   posEEPROM++;
 
   //read numberOfBuses
-  numberOfBuses = EEPROM.read(posEEPROM);
+  tempNumberOfBuses = EEPROM.read(posEEPROM);
   posEEPROM++;
-  //check end char and numberOfBuses value
-  if (EEPROM.read(posEEPROM) != 0 || numberOfBuses < 1 || numberOfBuses > MAX_NUMBER_OF_BUSES) {
+  //check end char and tempNumberOfBuses value
+  if (EEPROM.read(posEEPROM) != 0 || tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
     EEPROM.end();
     return false;
   }
   posEEPROM++;
 
   //read owBusesPins
-  if (owBusesPins) free(owBusesPins);
-  owBusesPins = new uint8_t[numberOfBuses * 2];
-  for (int i = 0; i < numberOfBuses; i++) {
-    owBusesPins[2 * i] = EEPROM.read(posEEPROM);
+  if (tempNumberOfBuses > 0) tempOwBusesPins = new uint8_t[tempNumberOfBuses * 2];
+  for (int i = 0; i < tempNumberOfBuses; i++) {
+    tempOwBusesPins[2 * i] = EEPROM.read(posEEPROM);
     posEEPROM++;
-    owBusesPins[(2 * i) + 1] = EEPROM.read(posEEPROM);
+    tempOwBusesPins[(2 * i) + 1] = EEPROM.read(posEEPROM);
     posEEPROM++;
     if (EEPROM.read(posEEPROM) != 0) {
       EEPROM.end();
@@ -180,12 +186,20 @@ bool loadConfig() {
   }
 
 #if ESP01_PLATFORM
-  numberOfBuses = 1;
-  free(owBusesPins);
-  owBusesPins = new uint8_t[2];
-  owBusesPins[0] = 3;
-  owBusesPins[1] = 0;
+  tempNumberOfBuses = 1;
+  if (tempOwBusesPins) free(tempOwBusesPins);
+  tempOwBusesPins = new uint8_t[2];
+  tempOwBusesPins[0] = 3;
+  tempOwBusesPins[1] = 0;
 #endif
+
+  //config checked so copy
+  APMode = tempAPMode;
+  ssid = tempSsid;
+  password = tempPassword;
+  numberOfBuses = tempNumberOfBuses;
+  if (owBusesPins) free(owBusesPins);
+  owBusesPins = tempOwBusesPins;
 
   EEPROM.end();
   return true;
@@ -501,11 +515,11 @@ void handleSubmit(WiFiClient c) {
 
 #if !ESP01_PLATFORM
   numberOfBuses = tempNumberOfBuses;
-  free(owBusesPins);
+  if (owBusesPins) free(owBusesPins);
   owBusesPins = tempOwBusesPins;
 #else
   numberOfBuses = 1;
-  free(owBusesPins);
+  if (owBusesPins) free(owBusesPins);
   owBusesPins = new uint8_t[2];
   owBusesPins[0] = 3;
   owBusesPins[1] = 0;
@@ -747,7 +761,7 @@ void setup(void) {
   }
 #endif
 
-  Serial.print(F("Start Config"));
+  Serial.print(F("Load Config"));
 
   //if skipExistingConfig is false then load the existing config
   if (!skipExistingConfig) {
@@ -780,7 +794,7 @@ void setup(void) {
         ESP.restart();
       }
     }
-    Serial.println(F(" : OK (Client mode)"));
+    Serial.print(F(" : OK (Client mode ")); Serial.print(WiFi.localIP().toString()); Serial.println(")");
   }
 
   Serial.print(F("Start OTA"));
