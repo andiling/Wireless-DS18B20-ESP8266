@@ -777,6 +777,9 @@ void setup(void) {
 
   Serial.print(F("Start WiFi"));
 
+  //disconnect first before reconfigure WiFi
+  WiFi.disconnect();
+
   //Start Wifi
   if (APMode) {
     WiFi.mode(WIFI_AP);
