@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>J6B Wireless DS18B20</title>
+    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
+</head>
+<body style="background-color: #ffdb99; Color: #000000;font-family: Arial;">
+    <h1>J6B Wireless DS18B20</h1>
+    <h2>Configuration WebPage<span id="l"> Loading...</span></h2>
+    <form id="f" style="display:none">
+        APMode: <input type='checkbox' id='a' name='a'><br>
+        ssid: <input type='text' id='s' name='s' maxlength='32'><br>
+        password: <input type='password' id='p' name='p' maxlength='64'><br>
+        hostname: <input type='text' id='h' name='h' maxlength='24'><br>
+        number Of OW Bus: <input type='number' id='n' name='n' min='1'><span id='e'></span><br>
+        <span id="buses"></span>
+        <input type='submit' value='Submit Config'>
+    </form>
+    <span id='r'></span>
+    <script>
+
+        function onNChange(){
+            for(i=0;i<$("#n").val();i++){
+                $("#b"+i+"i").prop("disabled",false);
+                $("#b"+i+"o").prop("disabled",false);
+                $("#b"+i).show();
+            }
+            for(i=$("#n").val();i<$("#n").prop("max");i++){
+                $("#b"+i).hide();
+                $("#b"+i+"i").prop("disabled",true);
+                $("#b"+i+"o").prop("disabled",true);
+            }
+        };
+
+        $("#n").change(onNChange);
+
+        $("#f").submit(function(event){
+            $("#r").html("Saving Configuration...");
+            $.post("/submit",$("#f").serialize(),function(data,status){ 
+                if(status=="success") {
+                    $("#f").hide();
+                    $("#r").html("<h3><b>Configuration saved successfully. System is restarting now.</b></h3>redirect in 10sec");
+                    setTimeout(function(){document.location="/getconfig";},10000);
+                }
+             });
+                
+            event.preventDefault();
+        });
+
+        $(document).ready(function(){
+            $.getJSON("/gc.json", function(GetConfig_json){
+                for(i=0;i<GetConfig_json.nm;i++) $("#buses").append("<span id='b"+i+"'>bus"+i+": PinIn <input type='number' id='b"+i+"i' name='b"+i+"i' min='0' max='255'> PinOut <input type='number' id='b"+i+"o' name='b"+i+"o' min='0' max='255'><br></span>");
+
+                if(GetConfig_json.a=="on") $("#a").prop("checked",true);
+                $("#s").val(GetConfig_json.s);
+                $("#h").val(GetConfig_json.h);
+                $("#n").val(GetConfig_json.n);
+                $("#n").prop("max",GetConfig_json.nm);
+                $.each(GetConfig_json,function(k,v){
+                    if(k[0]=="b") $('#'+k).val(v);
+                });
+
+                if(GetConfig_json.e==1){
+                    $("#n").prop("disabled",true);
+                    $("#b0i").prop("disabled",true);
+                    $("#b0o").prop("disabled",true);
+                    $("#e").append("<b> ESP-01</b>");
+                }
+
+                for(i=0;i<GetConfig_json.n;i++){
+                    $("#b"+i).prop("disabled",false);
+                    $("#b"+i).show();
+                }
+                for(i=GetConfig_json.n;i<GetConfig_json.nm;i++){
+                    $("#b"+i).hide();
+                    $("#b"+i).prop("disabled",true);
+                }
+                
+            });
+            
+            onNChange();
+
+            $("#f").show();
+            $("#l").fadeOut();
+            
+        });
+    </script>
+</body>
+</html>
