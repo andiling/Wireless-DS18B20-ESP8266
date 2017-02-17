@@ -31,13 +31,14 @@
 
 
 
-#define VERSION_NUMBER F("1.3")
+#define VERSION_NUMBER "1.4"
 
 //Config object
 Config config;
 
 //WiFiServer
 WiFiServer server(80);
+char buf[1024] = "";
 
 
 //-----------------------------------------------------------------------
@@ -234,24 +235,21 @@ void handleGetConfig(WiFiClient c) {
   //DEBUG
   Serial.println(F("handleGetConfig"));
 
-  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
+  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
 
-  c.print(F("<html>\
-      <head><title>J6B Wireless DS18B20</title></head>\
-      <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
-      <h1>J6B Wireless DS18B20</h1>\
-        <h2>Current Configuration</h2>"));
+  strcat_P(buf, PSTR("<!DOCTYPE html><html><head><title>J6B Wireless DS18B20</title></head>"));
+  strcat_P(buf, PSTR("<body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'><h1>J6B Wireless DS18B20</h1><h2>Current Configuration</h2>"));
 
-  c.print(F("APMode : ")); c.print(config.APMode ? F("on") : F("off"));
-  c.print(F("<br>ssid : ")); c.print(config.ssid);
-  c.print(F("<br>hostname : ")); c.print(config.hostname);
-  c.print(F("<br>numberOfBuses : ")); c.print(config.numberOfBuses);
+  sprintf_P(buf, PSTR("%sAPMode : %s<br>ssid : %s<br>hostname : %s"), buf, (config.APMode ? "on" : "off"), config.ssid, config.hostname);
+
+  sprintf_P(buf, PSTR("%s<br>numberOfBuses : %d"), buf, config.numberOfBuses);
   for (int i = 0; i < config.numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(config.owBusesPins[i][0]); c.print(F(" - PinOut = ")); c.print(config.owBusesPins[i][1]);
+    sprintf_P(buf, PSTR("%s<br>bus%d : PinIn = %d - PinOut = %d"), buf, i, config.owBusesPins[i][0], config.owBusesPins[i][1]);
   }
-  c.print(F("<br><br>build version : ")); c.print(VERSION_NUMBER); if (ESP01_PLATFORM) c.print(F(" (ESP01)"));
-  c.print(F("</body></html>"));
 
+  sprintf_P(buf, PSTR("%s<br><br>build version : %s%s<br>FreeHeap : %d</body></html>"), buf, VERSION_NUMBER, ESP01_PLATFORM ? " (ESP01)" : "", ESP.getFreeHeap());
+
+  c.write((uint8_t *)buf, strlen(buf));
 }
 //------------------------------------------
 void handleConfig(WiFiClient c) {
@@ -264,27 +262,30 @@ void handleConfig(WiFiClient c) {
   if (config.APMode) ipAddress = WiFi.softAPIP().toString();
   else ipAddress = WiFi.localIP().toString();
 
-  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
+  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
 
-  c.print(F("<html>\
-    <head><title>J6B Wireless DS18B20</title></head>\
-    <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
-    <h1>J6B Wireless DS18B20</h1>\
-    <h2>Configuration WebPage</h2>\
-    <form action='http://"));  c.print(ipAddress);  c.print(F("/submit' method='POST'>\
-      APMode: <input type='checkbox' name='APMode' ")); if (config.APMode)c.print(F("checked")); c.print(F("><br>"));
-  c.print(F("ssid: <input type='text' name='ssid' maxlength='32' value='")); c.print(config.ssid); c.print(F("'><br>"));
-  c.print(F("password: <input type = 'password' name = 'password' maxlength = '64'><br>"));
-  c.print(F("hostname: <input type = 'text' name = 'hostname' maxlength = '24' value = '")); c.print(config.hostname); c.print(F("'><br>"));
+  strcat_P(buf, PSTR("<!DOCTYPE html><html><head><title>J6B Wireless DS18B20</title></head>"));
+  strcat_P(buf, PSTR("<body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'><h1>J6B Wireless DS18B20</h1><h2>Configuration WebPage</h2>"));
+
+  sprintf_P(buf, PSTR("%s<form action='http://%s/submit' method='POST'>"), buf, ipAddress.c_str());
+  sprintf_P(buf, PSTR("%sAPMode: <input type='checkbox' name='APMode' %s><br>"), buf, config.APMode ? "checked" : "");
+
+  sprintf_P(buf, PSTR("%sssid: <input type='text' name='ssid' maxlength='32' value='%s'><br>"), buf, config.ssid);
+  strcat_P(buf, PSTR("password: <input type = 'password' name = 'password' maxlength = '64'><br>"));
+  sprintf_P(buf, PSTR("%shostname: <input type = 'text' name = 'hostname' maxlength = '24' value = '%s'><br>"), buf, config.hostname);
+
 #if !ESP01_PLATFORM
-  c.print(F("number Of OW Bus: <input type='number' min='1' max='")); c.print(MAX_NUMBER_OF_BUSES); c.print(F("' name='numberOfBuses'><br>"));
+  c.write((uint8_t *)buf, strlen(buf));
+
+  sprintf_P(buf, PSTR("number Of OW Bus: <input type='number' min='1' max='%d' name='numberOfBuses'><br>"), MAX_NUMBER_OF_BUSES);
   for (int i = 0; i < MAX_NUMBER_OF_BUSES; i++) {
-    c.print(F("bus")); c.print(i); c.print(F(": PinIn <input type='number' name='bus")); c.print(i); c.print(F("PinIn' min='0' max='255'> PinOut <input type='number' name='bus")); c.print(i); c.print(F("PinOut' min='0' max='255'><br>"));
+    sprintf_P(buf, PSTR("%sbus%d: PinIn <input type='number' name='bus%dPinIn' min='0' max='255'> PinOut <input type='number' name='bus%dPinOut' min='0' max='255'><br>"), buf, i, i, i);
   }
 #endif
-  c.print(F("<input type='submit' value='Submit Config'>\
-    </form>\
-    </body></html>"));
+
+  strcat_P(buf, PSTR("<input type='submit' value='Submit Config'></form></body></html>"));
+
+  c.write((uint8_t *)buf, strlen(buf));
 }
 
 //------------------------------------------
@@ -316,29 +317,34 @@ void handleSubmit(WiFiClient c) {
   if (findParameterInURLEncodedDatas(postedDatas, F("APMode")) == "on") tempAPMode = true;
   tempSsid = findParameterInURLEncodedDatas(postedDatas, F("ssid"));
   if (tempSsid.length() == 0) {
-    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
   tempPassword = findParameterInURLEncodedDatas(postedDatas, F("password"));
   tempHostname = findParameterInURLEncodedDatas(postedDatas, F("hostname"));
 #if !ESP01_PLATFORM
   if (findParameterInURLEncodedDatas(postedDatas, F("numberOfBuses")).length() == 0) {
-    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
   tempNumberOfBuses = findParameterInURLEncodedDatas(postedDatas, F("numberOfBuses")).toInt();
   if (tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
-    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
   for (int i = 0; i < tempNumberOfBuses; i++) {
     if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").length() == 0) {
-      c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+      strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+      c.write((uint8_t *)buf, strlen(buf));
       return;
     }
     tempOwBusesPins[i][0] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinIn").toInt();
     if (findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").length() == 0) {
-      c.print(F("HTTP/1.1 400 Bad Request5\r\n\r\n"));
+      strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request5\r\n\r\n"));
+      c.write((uint8_t *)buf, strlen(buf));
       return;
     }
     tempOwBusesPins[i][1] = findParameterInURLEncodedDatas(postedDatas, String("bus") + i + "PinOut").toInt();
@@ -367,24 +373,22 @@ void handleSubmit(WiFiClient c) {
   bool result = config.save();
 
   //Send client answer
-  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
+  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"));
 
-  c.print(F("<html>\
-      <head><title>J6B Wireless TeleInfo</title></head>\
-      <body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'>\
-      <h1>J6B Wireless DS18B20</h1>\
-      <h2>Configuration submission</h2>"));
-  c.print(F("APMode : ")); c.print(config.APMode ? F("on") : F("off"));
-  c.print(F("<br>ssid : ")); c.print(config.ssid);
-  c.print(F("<br>hostname : ")); c.print(config.hostname);
+  strcat_P(buf, PSTR("<!DOCTYPE html><html><head><title>J6B Wireless DS18B20</title></head>"));
+  strcat_P(buf, PSTR("<body style='background-color: #ffdb99; Color: #000000;font-family: Arial;'><h1>J6B Wireless DS18B20</h1><h2>Configuration submission</h2>"));
+
+  sprintf_P(buf, PSTR("%sAPMode : %s<br>ssid : %s<br>hostname : %s"), buf, (config.APMode ? "on" : "off"), config.ssid, config.hostname);
+
 #if !ESP01_PLATFORM
-  c.print(F("<br>numberOfBuses : ")); c.print(config.numberOfBuses);
+  sprintf_P(buf, PSTR("%s<br>numberOfBuses : %d", buf, config.numberOfBuses));
   for (int i = 0; i < config.numberOfBuses; i++) {
-    c.print(F("<br>bus")); c.print(i); c.print(F(" : PinIn = ")); c.print(config.owBusesPins[i][0]); c.print(F(" - PinOut = ")); c.print(config.owBusesPins[i][1]);
+    sprintf_P(buf, PSTR("%s<br>bus%d : PinIn = %d - PinOut = %d"), buf, i, config.owBusesPins[i][0], config.owBusesPins[i][1]);
   }
 #endif
-  c.print(F("<br><br>Save config result : ")); c.print(result ? F("OK") : F("FAILED!!!"));
-  c.print(F("</body></html>"));
+  sprintf_P(buf, PSTR("%s<br><br>Save config result : %s</body></html>"), buf, result ? "OK" : "FAILED!!!");
+
+  c.write((uint8_t *)buf, strlen(buf));
 
   //restart ESP to apply new config
   ESP.reset();
@@ -397,7 +401,8 @@ void handleGetList(WiFiClient c, String req) {
 
   //check for ? in the url request
   if (req.indexOf('?') == -1 || req.indexOf('?') == (req.length() - 1)) {
-    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
   //keep only the part after '?' and before the final HTTP/1.1
@@ -408,7 +413,8 @@ void handleGetList(WiFiClient c, String req) {
   String strBusNumber = findParameterInURLEncodedDatas(getDatas, F("bus"));
   //check string found
   if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
-    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
@@ -417,7 +423,8 @@ void handleGetList(WiFiClient c, String req) {
 
   //check busNumber
   if (busNumber >= config.numberOfBuses) {
-    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
@@ -439,22 +446,24 @@ void handleGetList(WiFiClient c, String req) {
 #endif
 
   //Send client answer
-  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
+  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
 
   //send JSON structure
-  c.print(F("{\r\n\t\"TemperatureSensorList\": [\r\n"));
+  strcat_P(buf, PSTR("{\r\n\t\"TemperatureSensorList\": [\r\n"));
   //populate ROMCode in JSON structure
   for (byte i = 0; i < nbOfRomCode; i++) {
-    c.print(F("\t\t\""));
+    strcat_P(buf, PSTR("\t\t\""));
     for (byte j = 0; j < 8; j++) {
-      String s = String(romCodeList[i][j], HEX);
-      c.print(s.length() == 1 ? String("0") + s : s);
+      sprintf_P(buf, PSTR("%s%02x"), buf, romCodeList[i][j]);
     }
-    if (i < nbOfRomCode - 1) c.print(F("\",\r\n"));
-    else c.print(F("\"\r\n"));
+    if (i < nbOfRomCode - 1) strcat_P(buf, PSTR("\",\r\n"));
+    else strcat_P(buf, PSTR("\"\r\n"));
   }
   //Finalize JSON structure
-  c.print(F("\t]\r\n}\r\n"));
+  strcat_P(buf, PSTR("\t]\r\n}\r\n"));
+
+  c.write((uint8_t *)buf, strlen(buf));
+
 }
 //------------------------------------------
 // return True if s contain only hexadecimal figure
@@ -474,7 +483,8 @@ void handleGetTemp(WiFiClient c, String req) {
 
   //check for ? in the url request
   if (req.indexOf('?') == -1 || req.indexOf('?') == (req.length() - 1)) {
-    c.print(F("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request1\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
   //keep only the part after '?' and before the final HTTP/1.1
@@ -485,7 +495,8 @@ void handleGetTemp(WiFiClient c, String req) {
   String strBusNumber = findParameterInURLEncodedDatas(getDatas, F("bus"));
   //check string found
   if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
-    c.print(F("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request2\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
@@ -494,7 +505,8 @@ void handleGetTemp(WiFiClient c, String req) {
 
   //check busNumber
   if (busNumber >= config.numberOfBuses) {
-    c.print(F("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request3\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
@@ -502,7 +514,8 @@ void handleGetTemp(WiFiClient c, String req) {
   String strROMCode = findParameterInURLEncodedDatas(getDatas, F("ROMCode"));
   //check string found
   if (strROMCode.length() != 16 || !isAlphaNumericString(strROMCode)) {
-    c.print(F("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request4\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
@@ -526,19 +539,18 @@ void handleGetTemp(WiFiClient c, String req) {
 #endif
 
   if (measuredTemperature == 12.3456F) {
-    c.print(F("HTTP/1.1 400 Bad Request5\r\n\r\n"));
+    strcpy_P(buf, PSTR("HTTP/1.1 400 Bad Request5\r\n\r\n"));
+    c.write((uint8_t *)buf, strlen(buf));
     return;
   }
 
 
-  //Send client answer
-  c.print(F("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
+  //Send client answer (build JSON structure while including temperature reading)
+  sprintf_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\r\n\t\"Temperature\": %s\r\n}\r\n"), String(measuredTemperature, 2).c_str());
 
-  //build JSON structure while including temperature reading
-  c.print(F("{\r\n\t\"Temperature\": "));
-  c.print(String(measuredTemperature, 2));
-  c.print(F("\r\n}\r\n"));
+  c.write((uint8_t *)buf, strlen(buf));
 
+  Serial.println(ESP.getFreeHeap());
 }
 
 //------------------------------------------
