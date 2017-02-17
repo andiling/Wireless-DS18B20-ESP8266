@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>J6B Wireless DS18B20</title>
-    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
 </head>
 <body style="background-color: #ffdb99; Color: #000000;font-family: Arial;">
     <h1>J6B Wireless DS18B20</h1>
@@ -17,6 +16,7 @@
         <input type='submit' value='Submit Config'>
     </form>
     <span id='r'></span>
+    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
     <script>
 
         function onNChange(){
@@ -57,7 +57,7 @@
                 $("#n").val(GetConfig_json.n);
                 $("#n").prop("max",GetConfig_json.nm);
                 $.each(GetConfig_json,function(k,v){
-                    if(k[0]=="b") $('#'+k).val(v);
+                    if(k.substring(0,1)=="b") $('#'+k).val(v);
                 });
 
                 if(GetConfig_json.e==1){
@@ -78,8 +78,6 @@
                 
             });
             
-            onNChange();
-
             $("#f").show();
             $("#l").fadeOut();
             

@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>J6B Wireless DS18B20</title>
-    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
+    
 </head>
 <body style="background-color: #ffdb99; Color: #000000;font-family: Arial;">
     <h1>J6B Wireless DS18B20</h1>
@@ -15,7 +15,8 @@
     <br>
     build version : <span id="b"></span><br>
     FreeHeap : <span id="f"></span>
-
+    
+    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
     <script>
         $(document).ready(function(){
             $.getJSON("/gc.json", function(GetConfig_json){
