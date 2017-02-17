@@ -179,55 +179,55 @@
 static inline __attribute__((always_inline))
 IO_REG_TYPE directRead(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 {
-    IO_REG_TYPE ret;
-    if (SS_GPIO == GPIO_TYPE(pin)) {
-        ret = READ_ARC_REG(((IO_REG_TYPE)base + EXT_PORT_OFFSET_SS));
-    } else {
-        ret = MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, EXT_PORT_OFFSET_SOC);
-    }
-    return ((ret >> GPIO_ID(pin)) & 0x01);
+  IO_REG_TYPE ret;
+  if (SS_GPIO == GPIO_TYPE(pin)) {
+    ret = READ_ARC_REG(((IO_REG_TYPE)base + EXT_PORT_OFFSET_SS));
+  } else {
+    ret = MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, EXT_PORT_OFFSET_SOC);
+  }
+  return ((ret >> GPIO_ID(pin)) & 0x01);
 }
 
 static inline __attribute__((always_inline))
 void directModeInput(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 {
-    if (SS_GPIO == GPIO_TYPE(pin)) {
-        WRITE_ARC_REG(READ_ARC_REG((((IO_REG_TYPE)base) + DIR_OFFSET_SS)) & ~(0x01 << GPIO_ID(pin)),
-			((IO_REG_TYPE)(base) + DIR_OFFSET_SS));
-    } else {
-        MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, DIR_OFFSET_SOC) &= ~(0x01 << GPIO_ID(pin));
-    }
+  if (SS_GPIO == GPIO_TYPE(pin)) {
+    WRITE_ARC_REG(READ_ARC_REG((((IO_REG_TYPE)base) + DIR_OFFSET_SS)) & ~(0x01 << GPIO_ID(pin)),
+                  ((IO_REG_TYPE)(base) + DIR_OFFSET_SS));
+  } else {
+    MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, DIR_OFFSET_SOC) &= ~(0x01 << GPIO_ID(pin));
+  }
 }
 
 static inline __attribute__((always_inline))
 void directModeOutput(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 {
-    if (SS_GPIO == GPIO_TYPE(pin)) {
-        WRITE_ARC_REG(READ_ARC_REG(((IO_REG_TYPE)(base) + DIR_OFFSET_SS)) | (0x01 << GPIO_ID(pin)),
-			((IO_REG_TYPE)(base) + DIR_OFFSET_SS));
-    } else {
-        MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, DIR_OFFSET_SOC) |= (0x01 << GPIO_ID(pin));
-    }
+  if (SS_GPIO == GPIO_TYPE(pin)) {
+    WRITE_ARC_REG(READ_ARC_REG(((IO_REG_TYPE)(base) + DIR_OFFSET_SS)) | (0x01 << GPIO_ID(pin)),
+                  ((IO_REG_TYPE)(base) + DIR_OFFSET_SS));
+  } else {
+    MMIO_REG_VAL_FROM_BASE((IO_REG_TYPE)base, DIR_OFFSET_SOC) |= (0x01 << GPIO_ID(pin));
+  }
 }
 
 static inline __attribute__((always_inline))
 void directWriteLow(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 {
-    if (SS_GPIO == GPIO_TYPE(pin)) {
-        WRITE_ARC_REG(READ_ARC_REG(base) & ~(0x01 << GPIO_ID(pin)), base);
-    } else {
-        MMIO_REG_VAL(base) &= ~(0x01 << GPIO_ID(pin));
-    }
+  if (SS_GPIO == GPIO_TYPE(pin)) {
+    WRITE_ARC_REG(READ_ARC_REG(base) & ~(0x01 << GPIO_ID(pin)), base);
+  } else {
+    MMIO_REG_VAL(base) &= ~(0x01 << GPIO_ID(pin));
+  }
 }
 
 static inline __attribute__((always_inline))
 void directWriteHigh(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 {
-    if (SS_GPIO == GPIO_TYPE(pin)) {
-        WRITE_ARC_REG(READ_ARC_REG(base) | (0x01 << GPIO_ID(pin)), base);
-    } else {
-        MMIO_REG_VAL(base) |= (0x01 << GPIO_ID(pin));
-    }
+  if (SS_GPIO == GPIO_TYPE(pin)) {
+    WRITE_ARC_REG(READ_ARC_REG(base) | (0x01 << GPIO_ID(pin)), base);
+  } else {
+    MMIO_REG_VAL(base) |= (0x01 << GPIO_ID(pin));
+  }
 }
 
 #define DIRECT_READ(base, pin)		directRead(base, pin)
@@ -254,8 +254,8 @@ void directWriteHigh(volatile IO_REG_TYPE *base, IO_REG_TYPE pin)
 class OneWireDualPin
 {
   private:
-    IO_REG_TYPE bitmask,bitmaskOut;
-    volatile IO_REG_TYPE *baseReg,*baseRegOut;
+    IO_REG_TYPE bitmask, bitmaskOut;
+    volatile IO_REG_TYPE *baseReg, *baseRegOut;
 
 #if ONEWIRE_SEARCH
     // global search state
@@ -340,8 +340,8 @@ class OneWireDualPin
     //    ReadBytes(net, buf+3, 10);  // Read 6 data bytes, 2 0xFF, 2 CRC16
     //    if (!CheckCRC16(buf, 11, &buf[11])) {
     //        // Handle error.
-    //    }     
-    //          
+    //    }
+    //
     // @param input - Array of bytes to checksum.
     // @param len - How many bytes to use.
     // @param inverted_crc - The two CRC16 bytes in the received data.

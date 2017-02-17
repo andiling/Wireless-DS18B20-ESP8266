@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>J6B Wireless DS18B20</title>
 </head>
 <body style="background-color: #ffdb99; Color: #000000;font-family: Arial;">
     <h1>J6B Wireless DS18B20</h1>
-    <h2>Configuration WebPage<span id="l"> Loading...</span></h2>
-    <form id="f" style="display:none">
+    <h2 style="display:inline">Configuration WebPage</h2><span id="l1"><h2 style="display:inline"><b> Loading...</b></h2></span><br><br>
+    <span id='i'></span>
+    <form id='f' style='display:none'>
         APMode: <input type='checkbox' id='a' name='a'><br>
         ssid: <input type='text' id='s' name='s' maxlength='32'><br>
         password: <input type='password' id='p' name='p' maxlength='64'><br>
@@ -17,6 +19,19 @@
     </form>
     <span id='r'></span>
     <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
+    <script>
+        if (!window.jQuery){
+            document.write('<script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.1.1.min.js.debug"><\/script>');
+            document.getElementById('l1').innerHTML='<h4 style="display:inline"> (JQuery loaded from Internet)</h4>';
+        }
+        else $("#l1").fadeOut();
+    </script>
+    <script>
+        if (!window.jQuery) {
+            document.getElementById('l1').innerHTML='';
+            document.getElementById('i').innerHTML='<h3 style="color:red"> JQuery is required. You need to have Internet access or to upload JQuery file using <a href="/fw"><b>fw</b></a> page.</h3>';
+        }
+    </script>
     <script>
 
         function onNChange(){
@@ -36,19 +51,18 @@
 
         $("#f").submit(function(event){
             $("#r").html("Saving Configuration...");
-            $.post("/submit",$("#f").serialize(),function(data,status){ 
+            $.post("/sc",$("#f").serialize(),function(data,status){ 
                 if(status=="success") {
                     $("#f").hide();
                     $("#r").html("<h3><b>Configuration saved successfully. System is restarting now.</b></h3>redirect in 10sec");
                     setTimeout(function(){document.location="/getconfig";},10000);
                 }
              });
-                
             event.preventDefault();
         });
 
         $(document).ready(function(){
-            $.getJSON("/gc.json", function(GetConfig_json){
+            $.getJSON("/gc", function(GetConfig_json){
                 for(i=0;i<GetConfig_json.nm;i++) $("#buses").append("<span id='b"+i+"'>bus"+i+": PinIn <input type='number' id='b"+i+"i' name='b"+i+"i' min='0' max='255'> PinOut <input type='number' id='b"+i+"o' name='b"+i+"o' min='0' max='255'><br></span>");
 
                 if(GetConfig_json.a=="on") $("#a").prop("checked",true);
@@ -64,22 +78,13 @@
                     $("#n").prop("disabled",true);
                     $("#b0i").prop("disabled",true);
                     $("#b0o").prop("disabled",true);
-                    $("#e").append("<b> ESP-01</b>");
+                    $("#e").append("<b> ESP-01 have only this bus</b>");
                 }
+                else onNChange();
 
-                for(i=0;i<GetConfig_json.n;i++){
-                    $("#b"+i).prop("disabled",false);
-                    $("#b"+i).show();
-                }
-                for(i=GetConfig_json.n;i<GetConfig_json.nm;i++){
-                    $("#b"+i).hide();
-                    $("#b"+i).prop("disabled",true);
-                }
-                
+                $("#f").show();
+                $("#l").fadeOut();
             });
-            
-            $("#f").show();
-            $("#l").fadeOut();
             
         });
     </script>

@@ -1,11 +1,7 @@
 #ifndef Config_h
 #define Config_h
 
-#include <Arduino.h>
-#include <EEPROM.h>
-
 #define MAX_NUMBER_OF_BUSES 4
-#define MAX_TEMP_SENSOR_PER_BUS 15
 
 class Config {
   public:
