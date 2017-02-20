@@ -7,8 +7,10 @@
 
 #include "WebDS18B20.h"
 
-WebDS18B20Bus::WebDS18B20Bus(uint8_t pinIn, uint8_t pinOut): OneWireDualPin( pinIn, pinOut) {};
 
+//----------------------------------------------------------------------
+// --- WebDS18B20Bus Class---
+//----------------------------------------------------------------------
 
 //-----------------------------------------------------------------------
 // DS18X20 Read ScratchPad command
@@ -60,13 +62,9 @@ void WebDS18B20Bus::startConvertT(byte addr[]) {
   write(0x44); // start conversion
 }
 
-
-
-
-
-
-
-
+//------------------------------------------
+// Constructor for WebDS18B20Bus that call constructor of parent class OneWireDualPin
+WebDS18B20Bus::WebDS18B20Bus(uint8_t pinIn, uint8_t pinOut): OneWireDualPin( pinIn, pinOut) {};
 //------------------------------------------
 // Function to initialize DS18X20 sensor
 void WebDS18B20Bus::setupTempSensors() {
@@ -117,8 +115,7 @@ void WebDS18B20Bus::getTemp(WiFiClient c, byte addr[]) {
 
   //if read of scratchpad failed (3 times inside function) then return special fake value
   if (!readScratchPad(addr, data)) {
-    strcpy_P(buf, PSTR("HTTP/1.1 400 Temperature read failed\r\n\r\n"));
-    c.write((uint8_t *)buf, strlen(buf));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Temperature read failed"));
     return;
   }
 
@@ -144,50 +141,60 @@ void WebDS18B20Bus::getTemp(WiFiClient c, byte addr[]) {
   }
   //result is (float)raw / 16.0;
 
+  //make JSON
+  String gtJSON(F("{\r\n\t\"Temperature\": "));
+  gtJSON.reserve(28);
+  gtJSON += String((float)raw / 16.0, 2) + F("\r\n}");
+
   //Send client answer (build JSON structure while including temperature reading)
-  //sprintf_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n\r\n"), .c_str());
-  //c.write((uint8_t *)buf, strlen(buf));
-  WebCore::SendHTTPShortAnswer(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
+  WebCore::SendHTTPResponse(c, 200, WebCore::json, gtJSON.c_str());
 }
 //------------------------------------------
-// Get an array of DS18X20 sensor ROMCode and send it to Web Client
+// List DS18X20 sensor ROMCode and send it to Web Client
 void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
 
-  byte nbFound = 0;
-
+  bool first = true;
   uint8_t romCode[8];
 
-  //prepare response header
-  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"));
   //prepare JSON structure
-  strcat_P(buf, PSTR("{\r\n\t\"TemperatureSensorList\": [\r\n"));
+  String grclJSON(F("{\"TemperatureSensorList\": [\r\n"));
 
   reset_search();
 
-  while (search(romCode) && nbFound < ((sizeof(buf) - 90/*(header+startOfJSON)*/) / 23 /*(nbchar per ROMCode)*/)) {
+  while (search(romCode)) {
 
     //if ROM received is incorrect or not a Temperature sensor THEN continue to next device
     if ((crc8(romCode, 7) != romCode[7]) || (romCode[0] != 0x10 && romCode[0] != 0x22 && romCode[0] != 0x28)) continue;
 
+    //increase grclJSON size to limit heap fragment
+    grclJSON.reserve(grclJSON.length() + 22);
+
     //populate JSON answer with romCode found
-    sprintf_P(buf, PSTR("%s\t\t\%s\""), buf, nbFound == 0 ? "" : ",");
+    if (!first) grclJSON += ',';
+    else first = false;
+    grclJSON += '\"';
     for (byte i = 0; i < 8; i++) {
-      sprintf_P(buf, PSTR("%s%02x"), buf, romCode[i]);
+      if (romCode[i] < 16)grclJSON += '0';
+      grclJSON += String(romCode[i], HEX);
     }
-    strcat_P(buf, PSTR("\"\r\n"));
-
-    nbFound++;
+    grclJSON += F("\"\r\n");
   }
-
   //Finalize JSON structure
-  strcat_P(buf, PSTR("\t]\r\n}\r\n"));
+  grclJSON += F("]\r\n}");
 
-  c.write((uint8_t *)buf, strlen(buf));
+  WebCore::SendHTTPResponse(c, 200, WebCore::json, grclJSON.c_str());
 }
 
 
 
 
+
+
+
+
+//----------------------------------------------------------------------
+// --- WebDS18B20Buses Class---
+//----------------------------------------------------------------------
 
 //------------------------------------------
 // return True if s contain only hexadecimal figure
@@ -200,32 +207,32 @@ boolean WebDS18B20Buses::isROMCodeString(String s) {
   return true;
 }
 //------------------------------------------
+//Init function to store number of Buses and pins associated
 void WebDS18B20Buses::Init(byte nbOfBuses, uint8_t owBusesPins[][2]) {
   _nbOfBuses = nbOfBuses;
-  _owBusesPins = (uint8_t**)owBusesPins;
+  _owBusesPins = owBusesPins;
   _initialized = (nbOfBuses > 0);
 
   for (byte i = 0; i < _nbOfBuses; i++) {
-//DEBUG
-Serial.print(_owBusesPins[i][0]);Serial.print("-");Serial.println(_owBusesPins[i][1]);
     WebDS18B20Bus(_owBusesPins[i][0], _owBusesPins[i][1]).setupTempSensors();
   }
 }
 //------------------------------------------
-void WebDS18B20Buses::GetList(WiFiClient c, String req) {
+//Parse GET request to list temp sensor on a bus
+void WebDS18B20Buses::GetList(WiFiClient c, String &req) {
 
   //LOG
   Serial.println(F("getList"));
 
   //check WebDS18B20Buses is initialized
   if (!_initialized) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Buses not Initialized"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Buses not Initialized"));
     return;
   }
 
   //check request structure
   if (req.indexOf('?') == -1 || req.indexOf(F("? ")) != -1 || req.indexOf(F(" HTTP/")) == -1) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Missing parameter"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing parameter"));
     return;
   }
   //keep only the part after '?' and before the final HTTP/1.1
@@ -235,7 +242,7 @@ void WebDS18B20Buses::GetList(WiFiClient c, String req) {
   String strBusNumber = WebCore::FindParameterInURLEncodedDatas(getDatas, F("bus"));
   //check string found
   if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect bus number"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
     return;
   }
 
@@ -244,7 +251,7 @@ void WebDS18B20Buses::GetList(WiFiClient c, String req) {
 
   //check busNumber
   if (busNumber >= _nbOfBuses) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Wrong bus number"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Wrong bus number"));
     return;
   }
 
@@ -263,20 +270,21 @@ void WebDS18B20Buses::GetList(WiFiClient c, String req) {
 
 }
 //------------------------------------------
-void WebDS18B20Buses::GetTemp(WiFiClient c, String req) {
+//Parse GET request to read a Temperature
+void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
 
   //LOG
   Serial.println(F("getTemp"));
 
   //check WebDS18B20Buses is initialized
   if (!_initialized) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Buses not Initialized"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Buses not Initialized"));
     return;
   }
 
   //check request structure
   if (req.indexOf('?') == -1 || req.indexOf(F("? ")) != -1 || req.indexOf(F(" HTTP/")) == -1) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Missing parameter"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing parameter"));
     return;
   }
   //keep only the part after '?' and before the final HTTP/1.1
@@ -286,7 +294,7 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String req) {
   String strBusNumber = WebCore::FindParameterInURLEncodedDatas(getDatas, F("bus"));
   //check string found
   if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect bus number"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
     return;
   }
 
@@ -295,7 +303,7 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String req) {
 
   //check busNumber
   if (busNumber >= _nbOfBuses) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Wrong bus number"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Wrong bus number"));
     return;
   }
 
@@ -303,7 +311,7 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String req) {
   String strROMCode = WebCore::FindParameterInURLEncodedDatas(getDatas, F("ROMCode"));
   //check string found
   if (!isROMCodeString(strROMCode)) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect ROMCode"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect ROMCode"));
     return;
   }
 
@@ -325,7 +333,11 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String req) {
 #if ESP01_PLATFORM
   Serial.begin(SERIAL_SPEED);
 #endif
-
-
+}
+//------------------------------------------
+//return system Status
+void WebDS18B20Buses::GetStatus(WiFiClient c) {
+  //nothing to send yet
+  WebCore::SendHTTPResponse(c, 200);
 }
 

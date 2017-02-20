@@ -17,26 +17,24 @@
 //Pin 0 = 1Wire bus output
 //Pin 2 = config Mode button
 //For other models, Pin Numbers and Buses are defined through Configuration Web Page
-#define ESP01_PLATFORM 0
+#define ESP01_PLATFORM 1
 
 //Enable OTA or Not
 #define OTA 1
 
 //Choose Serial Speed
-#define SERIAL_SPEED 115200
+#define SERIAL_SPEED 9600
 
 //Choose Pin used to boot in Rescue Mode
 #define RESCUE_BTN_PIN 2
 
-#define VERSION_NUMBER "2.0.1"
+#define VERSION_NUMBER "2.1"
 
 #if ESP01_PLATFORM
 #define VERSION VERSION_NUMBER " (ESP-01)"
 #else
 #define VERSION VERSION_NUMBER
 #endif
-
-extern char buf[1024];
 
 #endif
 

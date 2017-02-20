@@ -15,20 +15,22 @@ class WebDS18B20Bus: public OneWireDualPin {
     void setupTempSensors();
     void getTemp(WiFiClient c, byte addr[]);
     void getRomCodeList(WiFiClient c);
+    boolean getLastResult();
 };
 
 class WebDS18B20Buses {
   private:
     bool _initialized = false;
     byte _nbOfBuses;
-    uint8_t** _owBusesPins;
+    uint8_t (*_owBusesPins)[2];
 
     boolean isROMCodeString(String s);
 
   public:
     void Init(byte nbOfBuses, uint8_t owBusesPins[][2]);
-    void GetList(WiFiClient c, String req);
-    void GetTemp(WiFiClient c, String req);
+    void GetList(WiFiClient c, String &req);
+    void GetTemp(WiFiClient c, String &req);
+    void GetStatus(WiFiClient c);
 };
 
 #endif

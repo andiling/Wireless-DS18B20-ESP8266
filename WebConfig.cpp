@@ -16,24 +16,22 @@ void WebConfig::Get(WiFiClient c) {
 
   //{"a":"off","s":"Wifi","h":"TotoPC","n":1,"b0i":3,"b0o":0,"b":"1.4 (ESP01)","u":"5d23h50m","f":45875}
 
-  strcpy_P(buf, PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/json\r\nExpires: 0\r\n\r\n"));
-
-  sprintf_P(buf, PSTR("%s{\"a\":\"%s\",\"s\":\"%s\",\"h\":\"%s\""), buf, APMode ? "on" : "off", ssid, hostname);
+  String gc = F("{\"a\":\"");
+  //there is a predefined special password (mean to keep already saved one)
+  gc = gc + (APMode ? F("on") : F("off")) + F("\",\"s\":\"") + ssid + F("\",\"p\":\"ewcXoCt4HHjZUvY0\",\"h\":\"") + hostname + '\"';
 
 #if !ESP01_PLATFORM
-  sprintf_P(buf, PSTR("%s,\"n\":%d,\"nm\":%d"), buf, numberOfBuses, MAX_NUMBER_OF_BUSES);
+  gc = gc + F(",\"n\":") + numberOfBuses + F(",\"nm\":") + MAX_NUMBER_OF_BUSES;
   for (int i = 0; i < numberOfBuses; i++) {
-    sprintf_P(buf, PSTR("%s,\"b%di\":%d,\"b%do\":%d"), buf, i, owBusesPins[i][0], i, owBusesPins[i][1]);
+    gc = gc + F(",\"b") + i + F("i\":") + owBusesPins[i][0] + F(",\"b") + i + F("o\":") + owBusesPins[i][1];
   }
 #else
-  strcat_P(buf, PSTR(",\"e\":1,\"n\":1,\"nm\":1,\"b0i\":3,\"b0o\":0"));
+  gc += F(",\"e\":1,\"n\":1,\"nm\":1,\"b0i\":3,\"b0o\":0");
 #endif
 
-  unsigned long minutes = millis() / 60000;
+  gc += '}';
 
-  sprintf_P(buf, PSTR("%s,\"b\":\"%s\",\"u\":\"%dd%dh%dm\",\"f\":%d}"), buf, VERSION, (byte)(minutes / 1440), (byte)(minutes / 60 % 24), (byte)(minutes % 60), ESP.getFreeHeap());
-
-  c.write((uint8_t *)buf, strlen(buf));
+  WebCore::SendHTTPResponse(c, 200, WebCore::json, gc.c_str());
 }
 
 
@@ -66,29 +64,29 @@ void WebConfig::Post(WiFiClient c) {
   if (WebCore::FindParameterInURLEncodedDatas(postedDatas, F("a")) == "on") tempAPMode = true;
   tempSsid = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("s"));
   if (tempSsid.length() == 0) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect SSID"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect SSID"));
     return;
   }
   tempPassword = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("p"));
   tempHostname = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("h"));
 #if !ESP01_PLATFORM
   if (WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).length() == 0) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Missing number of OW Buses"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing number of OW Buses"));
     return;
   }
   tempNumberOfBuses = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).toInt();
   if (tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
-    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect number of OW Buses"));
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect number of OW Buses"));
     return;
   }
   for (int i = 0; i < tempNumberOfBuses; i++) {
     if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").length() == 0) {
-      WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("A PinIn value is missing"));
+      WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinIn value is missing"));
       return;
     }
     tempOwBusesPins[i][0] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").toInt();
     if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").length() == 0) {
-      WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("A PinOut value is missing"));
+      WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinOut value is missing"));
       return;
     }
     tempOwBusesPins[i][1] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").toInt();
@@ -98,7 +96,8 @@ void WebConfig::Post(WiFiClient c) {
   //config checked so copy
   APMode = tempAPMode;
   tempSsid.toCharArray(ssid, sizeof(ssid));
-  tempPassword.toCharArray(password, sizeof(password));
+  //there is a predefined special password (mean to keep already saved one)
+  if (tempPassword != F("ewcXoCt4HHjZUvY0")) tempPassword.toCharArray(password, sizeof(password));
   tempHostname.toCharArray(hostname, sizeof(hostname));
 
 #if !ESP01_PLATFORM
@@ -118,8 +117,8 @@ void WebConfig::Post(WiFiClient c) {
 
   //Send client answer
 
-  if (result) WebCore::SendHTTPShortAnswer(c, 200);
-  else WebCore::SendHTTPShortAnswer(c, 500, WebCore::html, PSTR("Configuration hasn't been saved"));
+  if (result) WebCore::SendHTTPResponse(c, 200);
+  else WebCore::SendHTTPResponse(c, 500, WebCore::html, F("Configuration hasn't been saved"));
 
   delay(1000);
 

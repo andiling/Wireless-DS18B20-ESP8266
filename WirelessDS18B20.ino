@@ -17,7 +17,6 @@ WebDS18B20Buses webDSBuses;
 
 //WiFiServer
 WiFiServer server(80);
-char buf[1024] = "";
 
 
 //------------------------------------------
@@ -45,14 +44,16 @@ void handleWifiClient(WiFiClient c) {
   else if (req.startsWith(F("GET /fl HTTP/1."))) WebCore::GetFileList(c);
   else if (req.startsWith(F("POST /up HTTP/1."))) WebCore::PostFile(c);
   else if (req.startsWith(F("GET /rm"))) WebCore::GetRemoveFile(c, req);
+  else if (req.startsWith(F("GET /gs0 HTTP/1."))) WebCore::GetSystemStatus(c);
   else if (req.startsWith(F("GET /gc HTTP/1."))) webConfig.Get(c);
   else if (req.startsWith(F("POST /sc HTTP/1."))) webConfig.Post(c);
   else if (req.startsWith(F("GET /getList?"))) webDSBuses.GetList(c, req);
   else if (req.startsWith(F("GET /getTemp?"))) webDSBuses.GetTemp(c, req);
+  else if (req.startsWith(F("GET /gs1 HTTP/1."))) webDSBuses.GetStatus(c);
   //else if (req.startsWith(F("GET /ota?pass="))) handleOTAPassword(c, req);
   /*  else if (req.startsWith(F("GET /test HTTP/1."))) {
       int16_t raw = 320;
-      WebCore::SendHTTPShortAnswer(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
+      WebCore::SendHTTPResponse(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
     }*/
   else if (req.startsWith(F("GET "))) WebCore::GetFile(c, req);
 
