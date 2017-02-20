@@ -13,6 +13,8 @@
 //Config object
 WebConfig webConfig;
 
+WebDS18B20Buses webDSBuses;
+
 //WiFiServer
 WiFiServer server(80);
 char buf[1024] = "";
@@ -45,13 +47,13 @@ void handleWifiClient(WiFiClient c) {
   else if (req.startsWith(F("GET /rm"))) WebCore::GetRemoveFile(c, req);
   else if (req.startsWith(F("GET /gc HTTP/1."))) webConfig.Get(c);
   else if (req.startsWith(F("POST /sc HTTP/1."))) webConfig.Post(c);
-  else if (req.startsWith(F("GET /getList?"))) WebDS18B20Bus::GetList(c, req, webConfig.numberOfBuses, webConfig.owBusesPins);
-  else if (req.startsWith(F("GET /getTemp?"))) WebDS18B20Bus::GetTemp(c, req, webConfig.numberOfBuses, webConfig.owBusesPins);
+  else if (req.startsWith(F("GET /getList?"))) webDSBuses.GetList(c, req);
+  else if (req.startsWith(F("GET /getTemp?"))) webDSBuses.GetTemp(c, req);
   //else if (req.startsWith(F("GET /ota?pass="))) handleOTAPassword(c, req);
-  else if (req.startsWith(F("GET /test HTTP/1."))) {
-    int16_t raw = 320;
-    WebCore::SendHTTPShortAnswer(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
-  }
+  /*  else if (req.startsWith(F("GET /test HTTP/1."))) {
+      int16_t raw = 320;
+      WebCore::SendHTTPShortAnswer(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
+    }*/
   else if (req.startsWith(F("GET "))) WebCore::GetFile(c, req);
 
   c.flush();
@@ -174,9 +176,7 @@ void setup(void) {
   webConfig.owBusesPins[0][1] = 0;
 #endif
 
-  for (byte i = 0; i < webConfig.numberOfBuses; i++) {
-    WebDS18B20Bus(webConfig.owBusesPins[i][0], webConfig.owBusesPins[i][1]).setupTempSensors();
-  }
+  webDSBuses.Init(webConfig.numberOfBuses, webConfig.owBusesPins);
 
 #if ESP01_PLATFORM
   Serial.begin(SERIAL_SPEED);

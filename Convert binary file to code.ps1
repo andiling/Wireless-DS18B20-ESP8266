@@ -6,6 +6,8 @@
 
 #--------------------------------------------------------------------------------------
 
+#--------------V 1.0 --------------
+
 #si un arg est present, c'est le fichier a traiter
 if($args -and $args[0]) { $chemin=$args }
 else

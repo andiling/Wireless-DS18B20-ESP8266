@@ -73,22 +73,22 @@ void WebConfig::Post(WiFiClient c) {
   tempHostname = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("h"));
 #if !ESP01_PLATFORM
   if (WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).length() == 0) {
-    WebCore::SendHTTPShortAnswer(c, 400, F("Missing number of OW Buses"));
+    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Missing number of OW Buses"));
     return;
   }
   tempNumberOfBuses = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).toInt();
   if (tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
-    WebCore::SendHTTPShortAnswer(c, 400, F("Incorrect number of OW Buses"));
+    WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("Incorrect number of OW Buses"));
     return;
   }
   for (int i = 0; i < tempNumberOfBuses; i++) {
     if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").length() == 0) {
-      WebCore::SendHTTPShortAnswer(c, 400, F("A PinIn value is missing"));
+      WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("A PinIn value is missing"));
       return;
     }
     tempOwBusesPins[i][0] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").toInt();
     if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").length() == 0) {
-      WebCore::SendHTTPShortAnswer(c, 400, F("A PinOut value is missing"));
+      WebCore::SendHTTPShortAnswer(c, 400, WebCore::html, F("A PinOut value is missing"));
       return;
     }
     tempOwBusesPins[i][1] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").toInt();
