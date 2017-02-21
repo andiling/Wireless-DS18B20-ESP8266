@@ -15,6 +15,20 @@
             <span id='r1'></span>
         </form>
 
+        <h3>Upload a Web File : </h3>
+        <form id='f2' method='POST' action='/up' enctype='multipart/form-data'>
+            <input type='file' name='fi2' id='fi2'>
+            <input type='submit' value='Upload File'>
+            <span id='r2'></span>
+        </form>
+        
+        <br><br>
+        <span id='dynSpan' style='display: none;'>
+            SPIFFS used/total size : <span id='u'></span> / <span id='t'></span><br>
+            <h3>File list :<span id='l2'> Loading...</span></h3>
+            <h4>Files : <span id="nb">3</span></h4>
+            <table id='fl'></table>
+        </span>
 
         <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
         <script>
@@ -32,6 +46,25 @@
         </script>
         <script>
 
+            function refreshFL(){
+                
+                $("#l2").fadeIn();
+                $("#fl").html('<tr><th><b>filename</b></th><th><b>size</b></th><th></th></tr>');
+                $.getJSON("/fl", function(FileList){
+
+                    $.each(FileList,function(k,v){
+                        if(k!='fl') $('#'+k).html(v);
+                    });
+                    
+                    $.each(FileList.fl,function(i,v){
+                        $("#fl").append("<tr><th>"+v.n+"</th><th>"+v.s+"</th><th><input type='button' id='db"+i+"' value='Delete'></th></tr><br>");
+                        $("#db"+i).click(function(evt){
+                            $.get('/rm?n='+escape(v.n)).always(refreshFL);
+                        });
+                    });
+                    $("#l2").fadeOut();
+                });
+            };
 
             function UploadProgress(r){
                     var xhr = $.ajaxSettings.xhr() ;
@@ -56,6 +89,31 @@
                     $('#f1').trigger('reset');
                 }
             });
+        });
+
+        $("#f2").submit(function(evt){
+            evt.preventDefault();
+            $('#r2').empty().show();
+
+            $.ajax({
+                url:'/up',type:'POST',cache: false,contentType: false,processData: false,
+                data:new FormData($('#f2')[0]),
+                xhr: function(){return UploadProgress($('#r2'));},
+                success:function(d,s){
+                    $('#r2').html('<span style="color: green;"><b>Done</b></span>').fadeOut(5000);
+                    $('#f2').trigger('reset');
+                    refreshFL();
+                },
+                error:function(){
+                    $('#r2').html('<span style="color: red;"><b>Failed</b></span>').fadeOut(5000);
+                    $('#f2').trigger('reset');
+                }
+            });
+        });
+
+        $(document).ready(function(){
+            $("#dynSpan").fadeIn();
+            refreshFL();
         });
 
         </script>

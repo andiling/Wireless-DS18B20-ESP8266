@@ -3,12 +3,14 @@
 #include <EEPROM.h>
 #include <FS.h>
 
+#include "WirelessDS18B20.h"
+
 #include "Config.h"
 #include "WebCore.h"
 #include "WebConfig.h"
 #include "WebDS18B20.h"
 
-#include "WirelessDS18B20.h"
+
 
 //Config object
 WebConfig webConfig;
@@ -39,23 +41,27 @@ void handleWifiClient(WiFiClient c) {
   //read first line request
   String req = c.readStringUntil('\n');
 
-  if (req.startsWith(F("GET /fw HTTP/1."))) WebCore::GetFirmwarePage(c);
+  if (req.startsWith(F("GET /fw HTTP/1."))) WebCore::GetNativeContent(c, WebCore::fw);
   else if (req.startsWith(F("POST /fw HTTP/1."))) WebCore::PostFile(c, true); //true indicates that we upload a firmware
+  else if (req.startsWith(F("GET /jquery-3.1.1.min.js HTTP/1."))) WebCore::GetNativeContent(c, WebCore::jquery);
+  else if (req.startsWith(F("GET /config HTTP/1."))) WebCore::GetNativeContent(c, WebCore::config);
+  else if (req.startsWith(F("GET /status HTTP/1."))) WebCore::GetNativeContent(c, WebCore::status);
+#if DEVELOPPER_MODE
+  else if (req.startsWith(F("GET /fwdev HTTP/1."))) WebCore::GetNativeContent(c, WebCore::fwdev);
   else if (req.startsWith(F("GET /fl HTTP/1."))) WebCore::GetFileList(c);
   else if (req.startsWith(F("POST /up HTTP/1."))) WebCore::PostFile(c);
   else if (req.startsWith(F("GET /rm"))) WebCore::GetRemoveFile(c, req);
+#endif
   else if (req.startsWith(F("GET /gs0 HTTP/1."))) WebCore::GetSystemStatus(c);
   else if (req.startsWith(F("GET /gc HTTP/1."))) webConfig.Get(c);
   else if (req.startsWith(F("POST /sc HTTP/1."))) webConfig.Post(c);
   else if (req.startsWith(F("GET /getList?"))) webDSBuses.GetList(c, req);
   else if (req.startsWith(F("GET /getTemp?"))) webDSBuses.GetTemp(c, req);
   else if (req.startsWith(F("GET /gs1 HTTP/1."))) webDSBuses.GetStatus(c);
-  //else if (req.startsWith(F("GET /ota?pass="))) handleOTAPassword(c, req);
-  /*  else if (req.startsWith(F("GET /test HTTP/1."))) {
-      int16_t raw = 320;
-      WebCore::SendHTTPResponse(c, 200, WebCore::json, "{\r\n\t\"Temperature\": " + String((float)raw / 16.0, 2) + "\r\n}");
-    }*/
+#if DEVELOPPER_MODE
   else if (req.startsWith(F("GET "))) WebCore::GetFile(c, req);
+#endif
+  else WebCore::SendHTTPResponse(c, 404);
 
   c.flush();
   c.stop();

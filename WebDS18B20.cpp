@@ -1,11 +1,12 @@
-
 #include <ESP8266WiFi.h>
+
+#include "WebDS18B20.h"
 
 #include "WebCore.h"
 #include "config.h"
 #include "WirelessDS18B20.h"
 
-#include "WebDS18B20.h"
+
 
 
 //----------------------------------------------------------------------
@@ -335,9 +336,8 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
 #endif
 }
 //------------------------------------------
-//return system Status
+//return OneWire Status
 void WebDS18B20Buses::GetStatus(WiFiClient c) {
   //nothing to send yet
   WebCore::SendHTTPResponse(c, 200);
 }
-

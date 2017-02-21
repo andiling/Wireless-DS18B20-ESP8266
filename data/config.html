@@ -54,7 +54,6 @@
             $("#r").html("Saving Configuration...");
             $.post("/sc",$("#f").serialize(),function(){ 
                 $("#f").hide();
-                $("#r").html(" 10sec");
                 var reload10sec=document.createElement('script');
                 reload10sec.text='var count=9;var cdi=setInterval(function(){$("#cd").text(count);if(!count){clearInterval(cdi);location.reload();}count--;},1000);';
                 $('#r').html('<h3><b>Configuration saved <span style="color: green;">successfully</span>. System is restarting now.</b></h3>This page will be reloaded in <span id="cd">10</span>sec.').append(reload10sec);
@@ -86,6 +85,9 @@
 
                 $("#f").show();
                 $("#l1").fadeOut();
+            })
+            .fail(function(){
+                $("#l1").html('<h2 style="display:inline"><b> Failed</b></h2>');
             });
             
         });

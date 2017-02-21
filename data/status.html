@@ -39,6 +39,9 @@
                     $('#'+k).html(v);
                 })
                 $("#l1").fadeOut();
+            })
+            .fail(function(){
+                $("#l1").html('<h2 style="display:inline"><b> Failed</b></h2>');
             });
 
             $("#l2").fadeOut();

@@ -11,6 +11,10 @@
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
 
+#define VERSION_NUMBER "2.2"
+
+
+
 //Choose ESP-01 version or not
 //For ESP-01, Pins used are restricted
 //Pin 3 (RX) = 1Wire bus input
@@ -22,13 +26,15 @@
 //Enable OTA or Not
 #define OTA 1
 
+//Enable developper mode (fwdev webpage and SPIFFS is used)
+#define DEVELOPPER_MODE 0
+
 //Choose Serial Speed
 #define SERIAL_SPEED 9600
 
 //Choose Pin used to boot in Rescue Mode
 #define RESCUE_BTN_PIN 2
 
-#define VERSION_NUMBER "2.1"
 
 #if ESP01_PLATFORM
 #define VERSION VERSION_NUMBER " (ESP-01)"
