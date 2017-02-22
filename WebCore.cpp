@@ -284,7 +284,7 @@ void WebCore::PostFile(WiFiClient c, bool firmwareUpdate) {
   byte boundarySize = 0;
   int i, j;
   long contentLength = 0;
-  String filename = "";
+
 
 
   //read complete header (until empty line is found) -----
@@ -327,7 +327,9 @@ void WebCore::PostFile(WiFiClient c, bool firmwareUpdate) {
     tmp = c.readStringUntil('\n');
     contentLength -= tmp.length() + 1;
   }
-
+  
+#if DEVELOPPER_MODE
+  String filename = "";
   if (!firmwareUpdate) {
 
     //look for filename
@@ -355,6 +357,7 @@ void WebCore::PostFile(WiFiClient c, bool firmwareUpdate) {
       return;
     }
   }
+#endif
 
   //empty String
   header = String();
