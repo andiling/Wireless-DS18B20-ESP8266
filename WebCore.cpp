@@ -445,9 +445,9 @@ void WebCore::GetRemoveFile(WiFiClient c, String &req) {
   String tmp = c.readStringUntil('\n');
   while (tmp != "\r") tmp = c.readStringUntil('\n');
 
-  tmp = String();
+  tmp = String(filenameA);
 
-  DeleteFile(filename, c);
+  DeleteFile(tmp, c);
 }
 #endif
 
