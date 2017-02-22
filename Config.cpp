@@ -1,4 +1,5 @@
-#include <Arduino.h> //for byte type
+
+#include <Arduino.h>
 #include <EEPROM.h>
 
 #include "Config.h"
@@ -16,7 +17,7 @@ uint16_t crc16(const uint8_t* data_p, uint16_t length) {
 }
 
 
-bool Config::save () {
+bool Config::Save() {
 #ifdef ESP8266
   EEPROM.begin(sizeof(Config));
 #endif
@@ -34,11 +35,11 @@ bool Config::save () {
   EEPROM.end();
 #endif
 
-  return load();
+  return Load();
 }
 
 
-bool Config::load () {
+bool Config::Load() {
 #ifdef ESP8266
   EEPROM.begin(sizeof(Config));
 #endif

@@ -3,6 +3,8 @@
 
 #include "Config.h"
 
+const char predefPassword[] PROGMEM = "ewcXoCt4HHjZUvY0";
+
 class WebConfig: public Config {
 
   public:

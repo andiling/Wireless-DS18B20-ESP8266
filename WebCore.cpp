@@ -4,8 +4,6 @@
 
 #include "WebCore.h"
 
-#include "WirelessDS18B20.h"
-
 //------------------------------------------
 //simple function that convert an hexadecimal char to byte
 byte WebCore::AsciiToHex(char c) {
@@ -14,33 +12,82 @@ byte WebCore::AsciiToHex(char c) {
 
 //------------------------------------------
 // Function that lookup in Datas to find a parameter and then return the corresponding decoded value
-String WebCore::FindParameterInURLEncodedDatas(String datas, String parameterToFind) {
-
-  String res = "";
+bool WebCore::FindParameterInURLEncodedDatas(const char* datas, const char* parameterToFind, char* returnBuf, size_t returnBufSize) {
 
   //can we find the param in the url
-  int posParam = datas.indexOf(parameterToFind + "=");
-
-  //if not then return empty string
-  if (posParam == -1) return res;
-
-  //if previous char is not a separator then lookup for the next match
-  if (posParam != 0 && datas[posParam - 1] != '&') return FindParameterInURLEncodedDatas(datas.substring(posParam + parameterToFind.length()), parameterToFind);
-
-  //now we can extract the value and decode it at the same time
-  //adujst position to the start of the value
-  posParam += parameterToFind.length() + 1;
-  while (posParam < datas.length() && datas[posParam] != '&') {
-    if (datas[posParam] == '+') res += ' ';
-    else if (datas[posParam] == '%') {
-      res += (char)(AsciiToHex(datas[posParam + 1]) * 0x10 + AsciiToHex(datas[posParam + 2]));
-      posParam++;
-      posParam++;
+  char* param = strstr(datas, parameterToFind);
+  //while posParam is not NULL
+  while (param != NULL) {
+    //if it's at beginning or previous char is & AND char just after is '='
+    if ((param == datas || (param != datas && param[-1] == '&')) && param[strlen(parameterToFind)] == '=') {
+      param += strlen(parameterToFind) + 1;
+      break;
     }
-    else res += datas[posParam];
+    //look after the substr found
+    param = strstr(param + strlen(parameterToFind), parameterToFind);
+  }
+
+  //if we didn't find it return false
+  if (param == NULL) return false;
+
+  //now we can copy the value and decode it at the same time
+  int posParam = 0;
+  int posReturnBuf = 0;
+  returnBuf[0] = 0;
+  while (param[posParam] && param[posParam] != '&' && posReturnBuf < returnBufSize) {
+
+    if (param[posParam] == '+') returnBuf[posReturnBuf++] = ' ';
+    else if (param[posParam] == '%') {
+      returnBuf[posReturnBuf++] = (char)(AsciiToHex(param[posParam + 1]) * 0x10 + AsciiToHex(param[posParam + 2]));
+      posParam += 2;
+    }
+    else returnBuf[posReturnBuf++] = param[posParam];
+
+    returnBuf[posReturnBuf] = 0;
     posParam++;
   }
-  return res;
+  if (posReturnBuf >= returnBufSize) return false;
+  return true;
+}
+// Function that lookup in Datas to find a parameter and then return the corresponding decoded value
+bool WebCore::FindParameterInURLEncodedDatas(const char* datas, const __FlashStringHelper* parameterToFind, char* returnBuf, size_t returnBufSize) {
+
+  const char* _parameterToFind = (const char*)parameterToFind;
+
+  //can we find the param in the url
+  char* param = strstr_P(datas, _parameterToFind);
+  //while posParam is not NULL
+  while (param != NULL) {
+    //if it's at beginning or previous char is & AND char just after is '='
+    if ((param == datas || (param != datas && param[-1] == '&')) && param[strlen_P(_parameterToFind)] == '=') {
+      param += strlen_P(_parameterToFind) + 1;
+      break;
+    }
+    //look after the substr found
+    param = strstr_P(param + strlen_P(_parameterToFind), _parameterToFind);
+  }
+
+  //if we didn't find it return false
+  if (param == NULL) return false;
+
+  //now we can copy the value and decode it at the same time
+  int posParam = 0;
+  int posReturnBuf = 0;
+  returnBuf[0] = 0;
+  while (param[posParam] && param[posParam] != '&' && posReturnBuf < returnBufSize) {
+
+    if (param[posParam] == '+') returnBuf[posReturnBuf++] = ' ';
+    else if (param[posParam] == '%') {
+      returnBuf[posReturnBuf++] = (char)(AsciiToHex(param[posParam + 1]) * 0x10 + AsciiToHex(param[posParam + 2]));
+      posParam += 2;
+    }
+    else returnBuf[posReturnBuf++] = param[posParam];
+
+    returnBuf[posReturnBuf] = 0;
+    posParam++;
+  }
+  if (posReturnBuf >= returnBufSize) return false;
+  return true;
 }
 
 //------------------------------------------
@@ -224,9 +271,9 @@ void WebCore::GetNativeContent(WiFiClient c, NativeContent p) {
     case jquery: c.write_P(jquery311minjsgz, sizeof(jquery311minjsgz)); break;
     case config: c.write_P(confightmlgz, sizeof(confightmlgz)); break;
     case status: c.write_P(statushtmlgz, sizeof(statushtmlgz)); break;
-    #if DEVELOPPER_MODE
+#if DEVELOPPER_MODE
     case fwdev: c.write_P(fwdevhtmlgz, sizeof(fwdevhtmlgz)); break;
-    #endif
+#endif
   }
 }
 //------------------------------------------
@@ -366,8 +413,6 @@ void WebCore::GetFile(WiFiClient c, String &req) {
 //Parse GET request to remove a file
 void WebCore::GetRemoveFile(WiFiClient c, String &req) {
 
-  String tmp = "";
-  String header = "";
   int i, j;
 
   //check request structure
@@ -378,29 +423,28 @@ void WebCore::GetRemoveFile(WiFiClient c, String &req) {
   //keep only the part after '?' and before the final HTTP/1.1
   String getDatas = req.substring(req.indexOf('?') + 1, req.indexOf(F(" HTTP/")));
 
-  String filename = FindParameterInURLEncodedDatas(getDatas, F("n"));
+  char filenameA[33] = {0};
+  if (!FindParameterInURLEncodedDatas(getDatas.c_str(), F("n"), filenameA, sizeof(filenameA)) || !filenameA[0]) {
+    SendHTTPResponse(c, 400, html, F("FileName is missing"));
+    return;
+  }
 
   //check filename passed
-  if (filename[filename.length() - 1] == '/') {
+  if (filenameA[strlen(filenameA) - 1] == '/') {
     SendHTTPResponse(c, 400, html, F("Can't Remove Folder"));
     return;
   }
 
   //check that file exists
-  if (!SPIFFS.exists(filename)) {
+  if (!SPIFFS.exists(filenameA)) {
     SendHTTPResponse(c, 400, html, F("This file does not exist"));
     return;
   }
 
   //read complete header (until empty line is found) ---
-  tmp = c.readStringUntil('\n');
-  while (tmp != "\r") {
-    header += tmp;
-    tmp = c.readStringUntil('\n');
-  }
+  String tmp = c.readStringUntil('\n');
+  while (tmp != "\r") tmp = c.readStringUntil('\n');
 
-  //empty String
-  header = String();
   tmp = String();
 
   DeleteFile(filename, c);

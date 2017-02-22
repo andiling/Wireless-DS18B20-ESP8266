@@ -1,11 +1,9 @@
 #include <ESP8266WiFi.h>
 
-#include "WebConfig.h"
-
 #include "WebCore.h"
 #include "WirelessDS18B20.h"
 
-
+#include "WebConfig.h"
 
 
 //------------------------------------------
@@ -18,7 +16,7 @@ void WebConfig::Get(WiFiClient c) {
 
   String gc = F("{\"a\":\"");
   //there is a predefined special password (mean to keep already saved one)
-  gc = gc + (APMode ? F("on") : F("off")) + F("\",\"s\":\"") + ssid + F("\",\"p\":\"ewcXoCt4HHjZUvY0\",\"h\":\"") + hostname + '\"';
+  gc = gc + (apMode ? F("on") : F("off")) + F("\",\"s\":\"") + ssid + F("\",\"p\":\"") + (__FlashStringHelper*)predefPassword + F("\",\"h\":\"") + hostname + '\"';
 
 #if !ESP01_PLATFORM
   gc = gc + F(",\"n\":") + numberOfBuses + F(",\"nm\":") + MAX_NUMBER_OF_BUSES;
@@ -40,13 +38,8 @@ void WebConfig::Post(WiFiClient c) {
 
   String postedDatas = "";
 
-  //temp variable for args
-  bool tempAPMode = false;
-  String tempSsid;
-  String tempPassword = "";
-  String tempHostname = "";
-  byte tempNumberOfBuses = 0;
-  uint8_t tempOwBusesPins[MAX_NUMBER_OF_BUSES][2];
+  //temp config
+  Config tempConfig;
 
   //LOG
   Serial.println(F("handleSubmit"));
@@ -61,59 +54,67 @@ void WebConfig::Post(WiFiClient c) {
   postedDatas = c.readStringUntil('\r');
 
   //Parse Parameters
-  if (WebCore::FindParameterInURLEncodedDatas(postedDatas, F("a")) == "on") tempAPMode = true;
-  tempSsid = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("s"));
-  if (tempSsid.length() == 0) {
+  char tempApModeA[3]; //only on answer is interesting so 3
+  if (WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("a"), tempApModeA, sizeof(tempApModeA)) && !strcmp_P(tempApModeA, PSTR("on"))) tempConfig.apMode = true;
+  if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("s"), tempConfig.ssid, sizeof(tempConfig.ssid)) || !tempConfig.ssid[0]) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect SSID"));
     return;
   }
-  tempPassword = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("p"));
-  tempHostname = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("h"));
+  WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("p"), tempConfig.password, sizeof(tempConfig.password));
+  WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("h"), tempConfig.hostname, sizeof(tempConfig.hostname));
+
+
 #if !ESP01_PLATFORM
-  if (WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).length() == 0) {
+  char tempNumberOfBusesA[2]; //only one char
+  if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("n"), tempNumberOfBusesA, sizeof(tempNumberOfBusesA))) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing number of OW Buses"));
     return;
   }
-  tempNumberOfBuses = WebCore::FindParameterInURLEncodedDatas(postedDatas, F("n")).toInt();
-  if (tempNumberOfBuses < 1 || tempNumberOfBuses > MAX_NUMBER_OF_BUSES) {
+  tempConfig.numberOfBuses = atoi(tempNumberOfBusesA);
+  if (tempConfig.numberOfBuses < 1 || tempConfig.numberOfBuses > MAX_NUMBER_OF_BUSES) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect number of OW Buses"));
     return;
   }
-  for (int i = 0; i < tempNumberOfBuses; i++) {
-    if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").length() == 0) {
+  char busPinName[4] = {'b', '0', 'i', 0};
+  for (int i = 0; i < tempConfig.numberOfBuses; i++) {
+    char busPinA[4] = {0};
+    busPinName[1] = '0' + i;
+    busPinName[2] = 'i';
+    if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), busPinName, busPinA, sizeof(busPinA)) || !busPinA[0]) {
       WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinIn value is missing"));
       return;
     }
-    tempOwBusesPins[i][0] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "i").toInt();
-    if (WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").length() == 0) {
+    if (atoi(busPinA) == 0 && (busPinA[0] != '0' || busPinA[1])) {
+      WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinIn value is incorrect"));
+      return;
+    }
+    tempConfig.owBusesPins[i][0] = atoi(busPinA);
+
+    busPinA[0] = 0;
+    busPinName[2] = 'o';
+    if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), busPinName, busPinA, sizeof(busPinA)) || !busPinA[0]) {
       WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinOut value is missing"));
       return;
     }
-    tempOwBusesPins[i][1] = WebCore::FindParameterInURLEncodedDatas(postedDatas, String("b") + i + "o").toInt();
+    if (atoi(busPinA) == 0 && (busPinA[0] != '0' || busPinA[1])) {
+      WebCore::SendHTTPResponse(c, 400, WebCore::html, F("A PinOut value is incorrect"));
+      return;
+    }
+    tempConfig.owBusesPins[i][1] = atoi(busPinA);
   }
 #endif
 
-  //config checked so copy
-  APMode = tempAPMode;
-  tempSsid.toCharArray(ssid, sizeof(ssid));
-  //there is a predefined special password (mean to keep already saved one)
-  if (tempPassword != F("ewcXoCt4HHjZUvY0")) tempPassword.toCharArray(password, sizeof(password));
-  tempHostname.toCharArray(hostname, sizeof(hostname));
+  //check for previous password ssid and apiKey (there is a predefined special password that mean to keep already saved one)
+  if (!strcmp_P(tempConfig.password, predefPassword)) strcpy(tempConfig.password, password);
 
-#if !ESP01_PLATFORM
-  numberOfBuses = tempNumberOfBuses;
-  for (int i = 0; i < tempNumberOfBuses; i++) {
-    owBusesPins[i][0] = tempOwBusesPins[i][0];
-    owBusesPins[i][1] = tempOwBusesPins[i][1];
-  }
-#else
-  numberOfBuses = 1;
-  owBusesPins[0][0] = 3;
-  owBusesPins[0][1] = 0;
+#if ESP01_PLATFORM
+  tempConfig.numberOfBuses = 1;
+  tempConfig.owBusesPins[0][0] = 3;
+  tempConfig.owBusesPins[0][1] = 0;
 #endif
 
   //then save
-  bool result = save();
+  bool result = tempConfig.Save();
 
   //Send client answer
 

@@ -1,12 +1,9 @@
 #include <ESP8266WiFi.h>
 
-#include "WebDS18B20.h"
-
 #include "WebCore.h"
-#include "config.h"
 #include "WirelessDS18B20.h"
 
-
+#include "WebDS18B20.h"
 
 
 //----------------------------------------------------------------------
@@ -199,9 +196,9 @@ void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
 
 //------------------------------------------
 // return True if s contain only hexadecimal figure
-boolean WebDS18B20Buses::isROMCodeString(String s) {
+boolean WebDS18B20Buses::isROMCodeString(char* s) {
 
-  if (s.length() != 16) return false;
+  if (strlen(s) != 16) return false;
   for (int i = 0; i < 16; i++) {
     if (!isHexadecimalDigit(s[i])) return false;
   }
@@ -239,16 +236,21 @@ void WebDS18B20Buses::GetList(WiFiClient c, String &req) {
   //keep only the part after '?' and before the final HTTP/1.1
   String getDatas = req.substring(req.indexOf('?') + 1, req.indexOf(F(" HTTP/")));
 
+
+
   //try to find busNumber
-  String strBusNumber = WebCore::FindParameterInURLEncodedDatas(getDatas, F("bus"));
-  //check string found
-  if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
+  char busNumberA[2] = {0}; //length limited to 1 char
+  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("bus"), busNumberA, sizeof(busNumberA))) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
     return;
   }
-
+  //check string found
+  if (busNumberA[0] < 0x30 || busNumberA[0] > 0x39) {
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
+    return;
+  }
   //convert busNumber
-  int busNumber = strBusNumber[0] - 0x30;
+  int busNumber = busNumberA[0] - 0x30;
 
   //check busNumber
   if (busNumber >= _nbOfBuses) {
@@ -292,15 +294,18 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
   String getDatas = req.substring(req.indexOf('?') + 1, req.indexOf(F(" HTTP/")));
 
   //try to find busNumber
-  String strBusNumber = WebCore::FindParameterInURLEncodedDatas(getDatas, F("bus"));
-  //check string found
-  if (strBusNumber.length() != 1 || strBusNumber[0] < 0x30 || strBusNumber[0] > 0x39) {
+  char busNumberA[2] = {0}; //length limited to 1 char
+  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("bus"), busNumberA, sizeof(busNumberA))) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
     return;
   }
-
+  //check string found
+  if (busNumberA[0] < 0x30 || busNumberA[0] > 0x39) {
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
+    return;
+  }
   //convert busNumber
-  int busNumber = strBusNumber[0] - 0x30;
+  int busNumber = busNumberA[0] - 0x30;
 
   //check busNumber
   if (busNumber >= _nbOfBuses) {
@@ -308,10 +313,12 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
     return;
   }
 
+
+
   //try to find ROMCode
-  String strROMCode = WebCore::FindParameterInURLEncodedDatas(getDatas, F("ROMCode"));
+  char ROMCodeA[17] = {0};
   //check string found
-  if (!isROMCodeString(strROMCode)) {
+  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("ROMCode"), ROMCodeA, sizeof(ROMCodeA)) || !isROMCodeString(ROMCodeA)) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect ROMCode"));
     return;
   }
@@ -319,7 +326,7 @@ void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
   //Parse ROMCode
   byte romCode[8];
   for (byte i = 0; i < 8; i++) {
-    romCode[i] = (WebCore::AsciiToHex(strROMCode[i * 2]) * 0x10) + WebCore::AsciiToHex(strROMCode[(i * 2) + 1]);
+    romCode[i] = (WebCore::AsciiToHex(ROMCodeA[i * 2]) * 0x10) + WebCore::AsciiToHex(ROMCodeA[(i * 2) + 1]);
   }
 
 #if ESP01_PLATFORM

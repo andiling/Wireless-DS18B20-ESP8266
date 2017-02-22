@@ -24,7 +24,7 @@ class WebDS18B20Buses {
     byte _nbOfBuses;
     uint8_t (*_owBusesPins)[2];
 
-    boolean isROMCodeString(String s);
+    boolean isROMCodeString(char* s);
 
   public:
     void Init(byte nbOfBuses, uint8_t owBusesPins[][2]);

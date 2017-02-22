@@ -1,16 +1,14 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
-#include <EEPROM.h>
 #include <FS.h>
 
-#include "WirelessDS18B20.h"
+//Please, have a look at WirelessDS18B20.h for information and configuration of Arduino project
 
-#include "Config.h"
 #include "WebCore.h"
 #include "WebConfig.h"
 #include "WebDS18B20.h"
 
-
+#include "WirelessDS18B20.h"
 
 //Config object
 WebConfig webConfig;
@@ -46,13 +44,13 @@ void handleWifiClient(WiFiClient c) {
   else if (req.startsWith(F("GET /jquery-3.1.1.min.js HTTP/1."))) WebCore::GetNativeContent(c, WebCore::jquery);
   else if (req.startsWith(F("GET /config HTTP/1."))) WebCore::GetNativeContent(c, WebCore::config);
   else if (req.startsWith(F("GET /status HTTP/1."))) WebCore::GetNativeContent(c, WebCore::status);
+  else if (req.startsWith(F("GET /gs0 HTTP/1."))) WebCore::GetSystemStatus(c);
 #if DEVELOPPER_MODE
   else if (req.startsWith(F("GET /fwdev HTTP/1."))) WebCore::GetNativeContent(c, WebCore::fwdev);
   else if (req.startsWith(F("GET /fl HTTP/1."))) WebCore::GetFileList(c);
   else if (req.startsWith(F("POST /up HTTP/1."))) WebCore::PostFile(c);
   else if (req.startsWith(F("GET /rm"))) WebCore::GetRemoveFile(c, req);
 #endif
-  else if (req.startsWith(F("GET /gs0 HTTP/1."))) WebCore::GetSystemStatus(c);
   else if (req.startsWith(F("GET /gc HTTP/1."))) webConfig.Get(c);
   else if (req.startsWith(F("POST /sc HTTP/1."))) webConfig.Post(c);
   else if (req.startsWith(F("GET /getList?"))) webDSBuses.GetList(c, req);
@@ -96,11 +94,14 @@ void setup(void) {
   }
 #endif
 
-  Serial.print(F("Load Config"));
+  Serial.print(F("Start Config"));
 
+  //initialize config with default values
+  webConfig.SetDefaultValues();
+  
   //if skipExistingConfig is false then load the existing config
   if (!skipExistingConfig) {
-    if (!webConfig.load()) {
+    if (!webConfig.Load()) {
       Serial.println(F(" : Failed to load config!!!---------"));
     } else {
       Serial.println(F(" : OK"));
@@ -110,6 +111,7 @@ void setup(void) {
     Serial.println(F(" : OK (Config Skipped)"));
   }
 
+#if DEVELOPPER_MODE
   Serial.print(F("Load SPIFFS"));
   if (SPIFFS.begin()) Serial.println(F(" : OK"));
   else {
@@ -119,6 +121,7 @@ void setup(void) {
 
     ESP.reset();
   }
+#endif
 
   Serial.print(F("Start WiFi"));
 
@@ -129,7 +132,7 @@ void setup(void) {
   if (webConfig.hostname[0]) WiFi.hostname(webConfig.hostname);
 
   //Start Wifi
-  if (webConfig.APMode) {
+  if (webConfig.apMode) {
     WiFi.mode(WIFI_AP);
     WiFi.softAP(webConfig.ssid, webConfig.password);
     Serial.println(F(" : OK (AP mode 192.168.4.1)"));

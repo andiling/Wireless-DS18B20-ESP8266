@@ -28,12 +28,13 @@ class WebCore {
       config,
       status
 #if DEVELOPPER_MODE
-      ,fwdev
+      , fwdev
 #endif
     } NativeContent;
 
     static byte AsciiToHex(char c); //Utils
-    static String FindParameterInURLEncodedDatas(String datas, String parameterToFind);
+    static bool FindParameterInURLEncodedDatas(const char* datas, const char* parameterToFind, char* returnBuf, size_t returnBufSize);
+    static bool FindParameterInURLEncodedDatas(const char* datas, const __FlashStringHelper* parameterToFind, char* returnBuf, size_t returnBufSize);
 
     static void SendHTTPResponse(WiFiClient c, int code, ContentType ct = no, const char* content = NULL, uint16_t goToRefererTimeOut = 0);
     static void SendHTTPResponse(WiFiClient c, int code, ContentType ct, const __FlashStringHelper* content, uint16_t goToRefererTimeOut = 0);

@@ -4,15 +4,18 @@
 
 //J6B Informations
 //Configuration Web Pages
-//http://IP/getconfig
+//http://IP/fw
 //http://IP/config
+//http://IP/status
 //DS18B20 Request Web Pages
 //http://IP/getList?bus=0
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
 
-#define VERSION_NUMBER "2.2"
+#define VERSION_NUMBER "2.3"
 
+//Enable developper mode (fwdev webpage and SPIFFS is used)
+#define DEVELOPPER_MODE 0
 
 
 //Choose ESP-01 version or not
@@ -26,9 +29,6 @@
 //Enable OTA or Not
 #define OTA 1
 
-//Enable developper mode (fwdev webpage and SPIFFS is used)
-#define DEVELOPPER_MODE 0
-
 //Choose Serial Speed
 #define SERIAL_SPEED 9600
 
@@ -36,11 +36,20 @@
 #define RESCUE_BTN_PIN 2
 
 
-#if ESP01_PLATFORM
-#define VERSION VERSION_NUMBER " (ESP-01)"
+//construct Version text
+#if DEVELOPPER_MODE
+#define VERSION_W_DEV VERSION_NUMBER "-DEV"
 #else
-#define VERSION VERSION_NUMBER
+#define VERSION_W_DEV VERSION_NUMBER
 #endif
+
+#if ESP01_PLATFORM
+#define VERSION VERSION_W_DEV " (ESP-01)"
+#else
+#define VERSION VERSION_W_DEV
+#endif
+
+
 
 #endif
 
