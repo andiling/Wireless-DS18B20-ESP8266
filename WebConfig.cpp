@@ -41,8 +41,6 @@ void WebConfig::Post(WiFiClient c) {
   //temp config
   Config tempConfig;
 
-  //LOG
-  Serial.println(F("handleSubmit"));
 
   //bypass Header
   postedDatas = c.readStringUntil('\n');
@@ -54,8 +52,8 @@ void WebConfig::Post(WiFiClient c) {
   postedDatas = c.readStringUntil('\r');
 
   //Parse Parameters
-  char tempApModeA[3]; //only on answer is interesting so 3
-  if (WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("a"), tempApModeA, sizeof(tempApModeA)) && !strcmp_P(tempApModeA, PSTR("on"))) tempConfig.apMode = true;
+  char checkboxA[3]; //only on answer is interesting so 3
+  if (WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("a"), checkboxA, sizeof(checkboxA)) && !strcmp_P(checkboxA, PSTR("on"))) tempConfig.apMode = true;
   if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("s"), tempConfig.ssid, sizeof(tempConfig.ssid)) || !tempConfig.ssid[0]) {
     WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect SSID"));
     return;

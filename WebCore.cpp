@@ -432,12 +432,6 @@ void WebCore::GetRemoveFile(WiFiClient c, String &req) {
     return;
   }
 
-  //check filename passed
-  if (filenameA[strlen(filenameA) - 1] == '/') {
-    SendHTTPResponse(c, 400, html, F("Can't Remove Folder"));
-    return;
-  }
-
   //check that file exists
   if (!SPIFFS.exists(filenameA)) {
     SendHTTPResponse(c, 400, html, F("This file does not exist"));
@@ -619,9 +613,6 @@ void WebCore::WriteFile(String &path, long fileSize, WiFiClient c) {
 //------------------------------------------
 //Delete file based on passed filename
 void WebCore::DeleteFile(String &filename, WiFiClient c) {
-
-  //can't remove folder for the moment (answer already handle by GetRemoveFile (400 Error))
-  if (filename[filename.length() - 1] == '/') return;
 
   //if file doesn't exists (answer already handle by GetRemoveFile (400 Error))
   if (!SPIFFS.exists(filename)) return;

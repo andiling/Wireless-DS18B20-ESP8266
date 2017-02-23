@@ -5,12 +5,13 @@
 
 class Config {
   public:
-    bool apMode;
-    char ssid[32 + 1];
-    char password[64 + 1];
-    char hostname[24 + 1];
-    char otaPassword[24 + 1];
-    byte numberOfBuses;
+    bool apMode = false;
+    char ssid[32 + 1] = {0};
+    char password[64 + 1] = {0};
+    char hostname[24 + 1] = {0};
+    char otaPassword[24 + 1] = {0};
+
+    byte numberOfBuses = 0;
     uint8_t owBusesPins[MAX_NUMBER_OF_BUSES][2];
 
     void SetDefaultValues() {

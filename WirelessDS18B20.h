@@ -12,7 +12,7 @@
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
 
-#define VERSION_NUMBER "2.3"
+#define VERSION_NUMBER "2.3.1"
 
 //Enable developper mode (fwdev webpage and SPIFFS is used)
 #define DEVELOPPER_MODE 0
