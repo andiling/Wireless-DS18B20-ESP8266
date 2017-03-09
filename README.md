@@ -45,7 +45,8 @@ Connect to this network and then configure it.
 
 WirelessDS18B20 offers you some webpages in order to configure it : 
 
- - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) : ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
+ - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) : 
+![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
 
 	 **APMode** : Wifi Access Point Mode (uncheck if you already have a wifi network ...)
 	 **ssid & password** : IDs of your Wifi Network
@@ -54,10 +55,12 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 	 **buses pin nmbers** : pins for each oneWire buses (2 pins per OW bus)
 
 
- - `http://IP/status` return you the current status of the module : ![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
+ - `http://IP/status` return you the current status of the module :
+![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
 
 
- - `http://IP/fw` allows you to flash a new firmware version : ![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
+ - `http://IP/fw` allows you to flash a new firmware version :
+![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
 
 ###Rescue Mode
 If you lost access to your WirelessDS18B20, you can `restart it` (power off then on) and during the 5 first seconds, `press the "Rescue Mode" button` to start it with default config (like during First Boot).
@@ -100,7 +103,7 @@ Then set it up with :
  - script type : JSON
  - request : Temperature (JSON tag name)
  - URL : http://***IP***/getTemp?bus=***0***&ROMCode=***0A1B2C3D4E5F6071*** 
- - Unit : �C
+ - Unit : °C
 
 ![Script Command Config](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptCmdConfig.png)
 
