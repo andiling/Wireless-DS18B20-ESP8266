@@ -16,11 +16,15 @@ This one requires a pin for reading the bus state and another one as output to d
 
 ##Build your WirelessDS18B20
 
-
+All files are inside schematic subfolder and has been designed with KiCad
 
 ###Schematic
 
 ![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.png)
+
+###PCB
+
+![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/PCB.png)
 
 ###Code
 Source code can be compiled for :
@@ -32,25 +36,31 @@ Source code can be compiled for :
 During First Boot, the ESP boot in Access Point Mode to allow you configuration
 
  - Network SSID : `WirelessDS18B20`
- - Password : `Password01`
+ - Password : `PasswordDS18B20`
  - ESP IP : `192.168.4.1`
 
 Connect to this network and then configure it.
 
 ###Configuration
 
-WirelessDS18B20 offers you a couple of webpages in order to configure it : 
+WirelessDS18B20 offers you some webpages in order to configure it : 
 
- - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) : ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.jpg)
-	 **APMode** : Wifi Access Point Mode (uncheck if you have your own wifi network ...)
+ - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) : ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
+
+	 **APMode** : Wifi Access Point Mode (uncheck if you already have a wifi network ...)
 	 **ssid & password** : IDs of your Wifi Network
-	 
+	 **hostname** : name of ESP on the network
+	 **number of OneWire buses** : number of OneWire buses...
+	 **buses pin nmbers** : pins for each oneWire buses (2 pins per OW bus)
 
 
- - `http://IP/getconfig` return you the current configuration (Wifi, 1-Wire Buses and version) : ![getconfig screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/getconfig.jpg)
+ - `http://IP/status` return you the current status of the module : ![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
 
-###Config/Rescue Mode
-If you lost access to your WirelessDS18B20, you can `restart it` (power off then on) and during the 5 first seconds, `press the "Config Mode" button` to start it with default config (like during First Boot).
+
+ - `http://IP/fw` allows you to flash a new firmware version : ![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
+
+###Rescue Mode
+If you lost access to your WirelessDS18B20, you can `restart it` (power off then on) and during the 5 first seconds, `press the "Rescue Mode" button` to start it with default config (like during First Boot).
 
 ###How to use it finally
 
@@ -62,7 +72,7 @@ Usage (answers are in JSON format):
 
 ##Use it with Jeedom
 
-> Memento : Jeedom is an innovative home automation system that can be found at http://jeedom.fr
+> Memento : Jeedom is an innovative home automation system that can be found at http://jeedom.com
 
 For this configuration you need the *Script* plugin installed from the market : 
 
@@ -90,7 +100,7 @@ Then set it up with :
  - script type : JSON
  - request : Temperature (JSON tag name)
  - URL : http://***IP***/getTemp?bus=***0***&ROMCode=***0A1B2C3D4E5F6071*** 
- - Unit : °C
+ - Unit : ï¿½C
 
 ![Script Command Config](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/JeedomScriptCmdConfig.png)
 
