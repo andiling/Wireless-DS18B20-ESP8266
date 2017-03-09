@@ -1,4 +1,4 @@
-update=02/08/2016 15:57:43
+update=12/11/2016 21:09:26
 version=1
 last_client=kicad
 [pcbnew]
@@ -59,3 +59,4 @@ LibName27=atmel
 LibName28=contrib
 LibName29=valves
 LibName30=ESP8266
+LibName31=lib/ESP8266
