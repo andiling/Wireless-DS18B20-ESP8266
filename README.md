@@ -46,6 +46,7 @@ Connect to this network and then configure it.
 WirelessDS18B20 offers you some webpages in order to configure it : 
 
  - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) : 
+
 ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
 
 	 **APMode** : Wifi Access Point Mode (uncheck if you already have a wifi network ...)
@@ -56,10 +57,12 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 
 
  - `http://IP/status` return you the current status of the module :
+
 ![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
 
 
  - `http://IP/fw` allows you to flash a new firmware version :
+
 ![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
 
 ###Rescue Mode
