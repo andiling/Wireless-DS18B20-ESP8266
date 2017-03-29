@@ -3,7 +3,7 @@ This project use an ESP8266 and some DS18B20 sensors on a 1-Wire bus to provide 
 
 The global idea of this project is that any system (like Jeedom) that's able to do an HTTP GET request and interpret JSON will get list of DS18B20 ROMcode available on buses or current temperature of a DS18B20 sensor.
 
-##Build your 1-Wire bus
+## Build your 1-Wire bus
 In order to get a wide 1-Wire bus (one that cover a house), Dallas provides some recommendations into their application note AN148.
 
 This project use the Improved Interface bellow that is able to support a 200m bus: 
@@ -18,21 +18,21 @@ This one requires a pin for reading the bus state and another one as output to d
 
 All files are inside schematic subfolder and has been designed with KiCad
 
-###Schematic
+### Schematic
 
 ![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.png)
 
-###PCB
+### PCB
 
 ![WirelessDS18B20 PCB](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/pcb.png)
 
-###Code
+### Code
 Source code can be compiled for :
 
  - ESP-01 : Pin usage is fixed like in schematic.
  - other ESP8266 models : 1-Wire buses pins can be configured through the configuration webpage
 
-###First Boot
+### First Boot
 During First Boot, the ESP boot in Access Point Mode to allow you configuration
 
  - Network SSID : `WirelessDS18B20`
@@ -41,7 +41,7 @@ During First Boot, the ESP boot in Access Point Mode to allow you configuration
 
 Connect to this network and then configure it.
 
-###Configuration
+### Configuration
 
 WirelessDS18B20 offers you some webpages in order to configure it : 
 
@@ -65,10 +65,10 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 
 ![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
 
-###Rescue Mode
+### Rescue Mode
 If you lost access to your WirelessDS18B20, you can `restart it` (power off then on) and during the 5 first seconds, `press the "Rescue Mode" button` to start it with default config (like during First Boot).
 
-###How to use it finally
+### How to use it finally
 
 Usage (answers are in JSON format): 
 
@@ -76,7 +76,7 @@ Usage (answers are in JSON format):
  - `http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071` will return simple JSON with temperature from the sensor
 
 
-##Use it with Jeedom
+## Use it with Jeedom
 
 > Memento : Jeedom is an innovative home automation system that can be found at http://jeedom.com
 
