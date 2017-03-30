@@ -87,7 +87,7 @@ void setup(void) {
   }
 #else
   bool skipExistingConfig = false;
-  pinMode(RESCUE_BTN_PIN, INPUT_PULLUP);
+  pinMode(RESCUE_BTN_PIN, (RESCUE_BTN_PIN != 16) ? INPUT_PULLUP : INPUT);
   for (int i = 0; i < 100 && skipExistingConfig == false; i++) {
     if (digitalRead(RESCUE_BTN_PIN) == LOW) skipExistingConfig = true;
     delay(50);
@@ -193,7 +193,6 @@ void setup(void) {
 #endif
 
   Serial.print(F(" : OK\r\nStart WebServer"));
-
   server.begin();
   Serial.println(F(" : OK"));
 

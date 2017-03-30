@@ -178,7 +178,7 @@ void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
     grclJSON += F("\"\r\n");
   }
   //Finalize JSON structure
-  grclJSON += F("]\r\n}");
+  grclJSON += F("]}");
 
   WebCore::SendHTTPResponse(c, 200, WebCore::json, grclJSON.c_str());
 }
