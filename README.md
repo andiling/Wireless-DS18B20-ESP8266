@@ -28,13 +28,14 @@ All files are inside schematic subfolder and has been designed with KiCad
 
 ![WirelessDS18B20 PCB](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/pcb.png)
 
-### Code
+### Code/Compile
 Source code can be compiled for :
 
  - ESP-01 : Pin usage is fixed like in schematic.
  - other ESP8266 models : 1-Wire buses pins can be configured through the configuration webpage
 
-
+In order to compile you first need to run PowerShell script which is in htmlToCppHeader folder.
+This one compress and then convert into code (PROGMEM variables) the webpages files (into data folder)
 
 
 ## Run
