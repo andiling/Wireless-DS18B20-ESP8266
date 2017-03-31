@@ -22,11 +22,11 @@ All files are inside schematic subfolder and has been designed with KiCad
 
 ### Schematic
 
-![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.png)
+![WirelessDS18B20 schematic](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/schematic.jpg)
 
 ### PCB
 
-![WirelessDS18B20 PCB](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/pcb.png)
+![WirelessDS18B20 PCB](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/pcb.jpg)
 
 ### Code/Compile
 Source code can be compiled for :
