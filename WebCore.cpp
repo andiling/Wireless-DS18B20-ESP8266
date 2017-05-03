@@ -375,7 +375,10 @@ void WebCore::GetSystemStatus(WiFiClient c) {
   unsigned long minutes = millis() / 60000;
 
   String ssJSON(F("{\"b\":\""));
-  ssJSON = ssJSON + VERSION + F("\",\"u\":\"") + (byte)(minutes / 1440) + 'd' + (byte)(minutes / 60 % 24) + 'h' + (byte)(minutes % 60) + F("m\",\"f\":") + ESP.getFreeHeap() + '}';
+  ssJSON = ssJSON + VERSION + F("\",\"u\":\"") + (byte)(minutes / 1440) + 'd' + (byte)(minutes / 60 % 24) + 'h' + (byte)(minutes % 60) + F("m\"");
+  ssJSON = ssJSON + F(",\"ap\":\"") + ((WiFi.getMode()&WIFI_AP) ? F("on") : F("off")) + F("\",\"ai\":\"") + ((WiFi.getMode()&WIFI_AP) ? WiFi.softAPIP().toString() : "-") + '"';
+  ssJSON = ssJSON + F(",\"sta\":\"") + ((WiFi.getMode()&WIFI_STA) ? F("on") : F("off")) + F("\",\"stai\":\"") + ((WiFi.getMode()&WIFI_STA && WiFi.isConnected()) ? WiFi.localIP().toString() : "-") + '"';
+  ssJSON = ssJSON + F(",\"f\":") + ESP.getFreeHeap() + '}';
 
   SendHTTPResponse(c, 200, json, ssJSON.c_str());
 }
