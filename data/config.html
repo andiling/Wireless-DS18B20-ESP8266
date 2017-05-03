@@ -9,7 +9,6 @@
     <span id='i'></span><br>
     <h2 style="display:inline">Configuration WebPage</h2><span id="l1"><h2 style="display:inline"><b> Loading...</b></h2></span><br><br>
     <form id='f' style='display:none'>
-        APMode: <input type='checkbox' id='a' name='a'><br>
         ssid: <input type='text' id='s' name='s' maxlength='32'><br>
         password: <input type='password' id='p' name='p' maxlength='64'><br>
         hostname: <input type='text' id='h' name='h' maxlength='24'><br>
@@ -65,7 +64,6 @@
             $.getJSON("/gc", function(GC){
                 for(i=0;i<GC.nm;i++) $("#buses").append("<span id='b"+i+"'>bus"+i+": PinIn <input type='number' id='b"+i+"i' name='b"+i+"i' min='0' max='255'> PinOut <input type='number' id='b"+i+"o' name='b"+i+"o' min='0' max='255'><br></span>");
 
-                if(GC.a=="on") $("#a").prop("checked",true);
                 $("#s").val(GC.s);
                 $("#p").val(GC.p);
                 $("#h").val(GC.h);

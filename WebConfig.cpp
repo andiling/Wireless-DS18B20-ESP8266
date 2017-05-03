@@ -12,11 +12,11 @@ void WebConfig::Get(WiFiClient c) {
   //LOG
   Serial.println(F("handleGetConfig"));
 
-  //{"a":"off","s":"Wifi","h":"TotoPC","n":1,"b0i":3,"b0o":0,"b":"1.4 (ESP01)","u":"5d23h50m","f":45875}
+  //{"s":"Wifi","h":"TotoPC","n":1,"b0i":3,"b0o":0,"b":"1.4 (ESP01)","u":"5d23h50m","f":45875}
 
-  String gc = F("{\"a\":\"");
+  String gc = F("{\"s\":\"");
   //there is a predefined special password (mean to keep already saved one)
-  gc = gc + (apMode ? F("on") : F("off")) + F("\",\"s\":\"") + ssid + F("\",\"p\":\"") + (__FlashStringHelper*)predefPassword + F("\",\"h\":\"") + hostname + '\"';
+  gc = gc + ssid + F("\",\"p\":\"") + (__FlashStringHelper*)predefPassword + F("\",\"h\":\"") + hostname + '"';
 
 #if !ESP01_PLATFORM
   gc = gc + F(",\"n\":") + numberOfBuses + F(",\"nm\":") + MAX_NUMBER_OF_BUSES;
@@ -53,9 +53,8 @@ void WebConfig::Post(WiFiClient c) {
 
   //Parse Parameters
   char checkboxA[3]; //only on answer is interesting so 3
-  if (WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("a"), checkboxA, sizeof(checkboxA)) && !strcmp_P(checkboxA, PSTR("on"))) tempConfig.apMode = true;
-  if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("s"), tempConfig.ssid, sizeof(tempConfig.ssid)) || !tempConfig.ssid[0]) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect SSID"));
+  if (!WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("s"), tempConfig.ssid, sizeof(tempConfig.ssid))) {
+    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("SSID missing"));
     return;
   }
   WebCore::FindParameterInURLEncodedDatas(postedDatas.c_str(), F("p"), tempConfig.password, sizeof(tempConfig.password));

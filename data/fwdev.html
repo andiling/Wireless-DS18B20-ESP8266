@@ -9,7 +9,7 @@
             var fn=document.getElementById("fi1").value;
             if(fn.lastIndexOf("/")!=-1) fn=fn.substring(fn.lastIndexOf("/")+1);
             if(fn.lastIndexOf("\\")!=-1) fn=fn.substring(fn.lastIndexOf("\\")+1);
-            if(!fn.toLowerCase().startsWith(sessionStorage.getItem("ProductName").toLowerCase())){
+            if(fn.toLowerCase().indexOf(sessionStorage.getItem("ProductName").toLowerCase()) != 0){
                 alert("You didn&apos;t select a valid Firmware file for "+sessionStorage.getItem("ProductName"));
                 return false;
                 };
