@@ -30,7 +30,7 @@
 #define OTA 1
 
 //Choose Serial Speed
-#define SERIAL_SPEED 9600
+#define SERIAL_SPEED 115200
 
 //Choose Pin used to boot in Rescue Mode
 #define RESCUE_BTN_PIN 2
