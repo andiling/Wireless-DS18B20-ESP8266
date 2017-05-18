@@ -79,7 +79,7 @@ void setup(void) {
 
   Serial.print(F("J6B Wireless DS18B20 ")); Serial.println(VERSION);
   Serial.println(F("---Booting---"));
-  Serial.println(F("Wait skip config button for 5 seconds"));
+  Serial.println(F("Wait Rescue button for 5 seconds"));
 
 #if ESP01_PLATFORM
   bool skipExistingConfig = false;
@@ -114,6 +114,70 @@ void setup(void) {
     Serial.println(F(" : OK (Config Skipped)"));
   }
 
+
+
+  Serial.print(F("Start WiFi : "));
+
+  //preconfigure AP
+  WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PSK);
+  WiFi.enableAP(false); //it will be reactivated if required by Disco event that occur every second
+
+  //Enable or Disable STA if needed
+  if ((WiFi.getMode()&WIFI_STA) != (webConfig.ssid[0] != 0)) WiFi.enableSTA(webConfig.ssid[0] != 0);
+
+  //if STA is requested
+  if (webConfig.ssid[0]) {
+
+    //Set hostname
+    WiFi.hostname(webConfig.hostname);
+
+    //Enable STA
+    if (!(WiFi.getMode()&WIFI_STA)) WiFi.enableSTA(true);
+
+    //if not connected or config changed then reconnect
+    if (!WiFi.isConnected() || WiFi.SSID() != webConfig.ssid || WiFi.psk() != webConfig.password) {
+      WiFi.disconnect();
+      WiFi.begin(webConfig.ssid, webConfig.password);
+    }
+
+    //Wait 5sec for connection
+    for (int i = 0; i < 50 && !WiFi.isConnected(); i++) {
+      if ((i % 10) == 0) Serial.print(".");
+      delay(100);
+    }
+    if (!WiFi.isConnected()) Serial.println(F("Not Yet Connected"));
+    else {
+      Serial.print(F("OK("));
+      Serial.print(WiFi.localIP());
+      Serial.println(')');
+    }
+
+    //Configure handlers
+    wifiHandler1 = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected & evt) {
+      if (!(WiFi.getMode()&WIFI_AP)) {
+        WiFi.enableAP(true);
+        Serial.print(F("Disconnected : Enabling AP (")); Serial.print(WiFi.softAPIP()); Serial.println(')');
+      }
+    });
+    wifiHandler2 = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP & evt) {
+      if (WiFi.getMode()&WIFI_AP) WiFi.enableAP(false);
+      Serial.print(F("Connected : ")); Serial.println(WiFi.localIP());
+    });
+
+  }
+  else {
+    //Disable STA
+    if (WiFi.getMode()&WIFI_STA) WiFi.enableSTA(false);
+    //Enable AP
+    if (!(WiFi.getMode()&WIFI_AP)) WiFi.enableAP(true);
+    Serial.print(F(" AP mode(")); Serial.print(WiFi.softAPIP()); Serial.println(')');
+  }
+
+  //Switch to not persistent now
+  WiFi.persistent(false);
+
+
+
 #if DEVELOPPER_MODE
   Serial.print(F("Load SPIFFS"));
   if (SPIFFS.begin()) Serial.println(F(" : OK"));
@@ -125,53 +189,6 @@ void setup(void) {
     ESP.reset();
   }
 #endif
-
-  Serial.print(F("Start WiFi : "));
-
-  //Init AP
-  WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PSK);
-  Serial.print('1');
-
-  //configure handlers
-  wifiHandler1 = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected & evt) {
-    if (!(WiFi.getMode()&WIFI_AP)) WiFi.enableAP(true);
-  });
-  wifiHandler2 = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP & evt) {
-    if (WiFi.getMode()&WIFI_AP) WiFi.enableAP(false);
-    Serial.print(F("Connected : ")); Serial.println(WiFi.localIP());
-  });
-
-  //Init STA if needed
-  if ((WiFi.getMode()&WIFI_STA) != (webConfig.ssid[0] != 0)) {
-    WiFi.enableSTA(webConfig.ssid[0] != 0);
-  }
-  Serial.print('2');
-
-  //configure STA if needed
-  if ((webConfig.ssid[0] != 0) && (WiFi.SSID() != webConfig.ssid || WiFi.psk() != webConfig.password)) {
-    WiFi.disconnect();
-    WiFi.begin(webConfig.ssid, webConfig.password);
-  }
-  Serial.print(F("3"));
-
-  //if ssid not empty
-  if (webConfig.ssid[0] != 0) {
-    //wait 5sec to get connected
-    for (int i = 0; i < 50 && !WiFi.isConnected(); i++) {
-      delay(100);
-      if ((i % 10) == 0)Serial.print(".");
-    }
-    if (!WiFi.isConnected()) Serial.println(F("Not Yet Connected"));
-    else Serial.println();
-  }
-  else {
-    Serial.print(F("AP mode : ")); Serial.println(WiFi.softAPIP());
-  }
-
-  //switch to not persistent
-  WiFi.persistent(false);
-
-
 
 #if OTA
   Serial.print(F("Start OTA"));
@@ -233,8 +250,12 @@ void loop(void) {
   // Check if a client has connected
   WiFiClient client = server.available();
   if (client) {
+    //Prevent WiFi STA autoreconnect that break AP every second
     if (!WiFi.isConnected()) WiFi.disconnect();
+
     handleWifiClient(client);
+
+    //Restart STA reconnect
     if (!WiFi.isConnected() && (webConfig.ssid[0] != 0)) WiFi.begin(webConfig.ssid, webConfig.password);
   }
   yield();
