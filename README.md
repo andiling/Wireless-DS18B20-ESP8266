@@ -57,7 +57,6 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 
 ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
 
-	 **APMode** : Wifi Access Point Mode (uncheck if you already have a wifi network ...)
 	 **ssid & password** : IDs of your Wifi Network
 	 **hostname** : name of ESP on the network
 	 **number of OneWire buses** : number of OneWire buses...
@@ -74,7 +73,7 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 ![firmware screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/firmware.png)
 
 ### Rescue Mode
-If you lost access to your WirelessDS18B20, you can `restart it` (power off then on) and during the 5 first seconds, `press the "Rescue Mode" button` to start it with default config (like during First Boot).
+If you lost access to your WirelessDS18B20, you can `reset it` (reset button or power off) and during the 5 first seconds, `press the "Rescue Mode" button` to start it with default config (like during First Boot).
 
 
 
