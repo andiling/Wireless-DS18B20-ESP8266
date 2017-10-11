@@ -14,8 +14,8 @@ function BinaryToCppHeader($binaryPath)
     if(Test-Path ($binaryPath+".h")) {Remove-Item ($binaryPath+".h");}
     
     #open files
-    [System.IO.FileStream] $binaryFile = [System.IO.File]::OpenRead($binaryPath);
-    [System.IO.FileStream] $cppFile = [System.IO.File]::OpenWrite($binaryPath+".h");
+    [System.IO.FileStream] $binaryFile = [System.IO.File]::OpenRead($pwd.Path+"\"+$binaryPath);
+    [System.IO.FileStream] $cppFile = [System.IO.File]::OpenWrite($pwd.Path+"\"+$binaryPath+".h");
 
     #Prepare start of code and write it
     $text+="const PROGMEM char "+ (Remove-StringLatinCharacters (Split-Path -Path $binaryPath -Leaf).Replace(' ','').Replace('.','').Replace('-','')) + "[] = {";
@@ -65,7 +65,7 @@ Compress-7Zip -Path $path -Filter $file -ArchiveFileName ($path+"\"+$file+".gz")
 BinaryToCppHeader($path+"\"+$file+".gz")
 Remove-Item ($path+"\"+$file+".gz")
 
-$file="fwdev.html"
+$file="test.html"
 Compress-7Zip -Path $path -Filter $file -ArchiveFileName ($path+"\"+$file+".gz") -CompressionLevel Ultra
 BinaryToCppHeader($path+"\"+$file+".gz")
 Remove-Item ($path+"\"+$file+".gz")

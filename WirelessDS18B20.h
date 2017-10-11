@@ -3,6 +3,7 @@
 
 
 //J6B Informations
+//------------Compile for 1M 64K SPIFFS------------
 //Configuration Web Pages
 //http://IP/fw
 //http://IP/config
@@ -12,7 +13,7 @@
 //http://IP/getTemp?bus=0&ROMCode=0A1B2C3D4E5F6071
 
 
-#define VERSION_NUMBER "2.3.5"
+#define VERSION_NUMBER "3.0"
 
 //Enable developper mode (fwdev webpage and SPIFFS is used)
 #define DEVELOPPER_MODE 0
@@ -25,9 +26,6 @@
 //Pin 2 = config Mode button
 //For other models, Pin Numbers and Buses are defined through Configuration Web Page
 #define ESP01_PLATFORM 1
-
-//Enable OTA or Not
-#define OTA 1
 
 //Choose Serial Speed
 #define SERIAL_SPEED 115200

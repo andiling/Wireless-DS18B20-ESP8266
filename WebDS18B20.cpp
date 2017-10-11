@@ -1,6 +1,7 @@
 #include <ESP8266WiFi.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
-#include "WebCore.h"
 #include "WirelessDS18B20.h"
 
 #include "WebDS18B20.h"
@@ -12,7 +13,7 @@
 
 //-----------------------------------------------------------------------
 // DS18X20 Read ScratchPad command
-boolean WebDS18B20Bus::readScratchPad(byte addr[], byte data[]) {
+boolean DS18B20Bus::ReadScratchPad(byte addr[], byte data[]) {
 
   boolean crcScratchPadOK = false;
 
@@ -35,7 +36,7 @@ boolean WebDS18B20Bus::readScratchPad(byte addr[], byte data[]) {
 }
 //------------------------------------------
 // DS18X20 Write ScratchPad command
-void WebDS18B20Bus::writeScratchPad(byte addr[], byte th, byte tl, byte cfg) {
+void DS18B20Bus::WriteScratchPad(byte addr[], byte th, byte tl, byte cfg) {
 
   reset();
   select(addr);
@@ -46,7 +47,7 @@ void WebDS18B20Bus::writeScratchPad(byte addr[], byte th, byte tl, byte cfg) {
 }
 //------------------------------------------
 // DS18X20 Copy ScratchPad command
-void WebDS18B20Bus::copyScratchPad(byte addr[]) {
+void DS18B20Bus::CopyScratchPad(byte addr[]) {
 
   reset();
   select(addr);
@@ -54,7 +55,7 @@ void WebDS18B20Bus::copyScratchPad(byte addr[]) {
 }
 //------------------------------------------
 // DS18X20 Start Temperature conversion
-void WebDS18B20Bus::startConvertT(byte addr[]) {
+void DS18B20Bus::StartConvertT(byte addr[]) {
   reset();
   select(addr);
   write(0x44); // start conversion
@@ -62,10 +63,10 @@ void WebDS18B20Bus::startConvertT(byte addr[]) {
 
 //------------------------------------------
 // Constructor for WebDS18B20Bus that call constructor of parent class OneWireDualPin
-WebDS18B20Bus::WebDS18B20Bus(uint8_t pinIn, uint8_t pinOut): OneWireDualPin( pinIn, pinOut) {};
+DS18B20Bus::DS18B20Bus(uint8_t pinIn, uint8_t pinOut): OneWireDualPin(pinIn, pinOut) {};
 //------------------------------------------
-// Function to initialize DS18X20 sensor
-void WebDS18B20Bus::setupTempSensors() {
+// Function to initialize DS18X20 sensors
+void DS18B20Bus::SetupTempSensors() {
 
   byte i, j;
   byte addr[8];
@@ -78,7 +79,7 @@ void WebDS18B20Bus::setupTempSensors() {
     //if ROM received is incorrect or not a DS1822 or DS18B20 THEN continue to next device
     if ((crc8(addr, 7) != addr[7]) || (addr[0] != 0x22 && addr[0] != 0x28)) continue;
 
-    scratchPadReaded = readScratchPad(addr, data);
+    scratchPadReaded = ReadScratchPad(addr, data);
     //if scratchPad read failed then continue to next 1-Wire device
     if (!scratchPadReaded) continue;
 
@@ -86,37 +87,31 @@ void WebDS18B20Bus::setupTempSensors() {
     if (data[2] != 0x50 || data[3] != 0x00 || data[4] != 0x5F) {
 
       //write ScratchPad with Th=80°C, Tl=0°C, Config 11bit resolution
-      writeScratchPad(addr, 0x50, 0x00, 0x5F);
+      WriteScratchPad(addr, 0x50, 0x00, 0x5F);
 
-      scratchPadReaded = readScratchPad(addr, data);
+      scratchPadReaded = ReadScratchPad(addr, data);
       //if scratchPad read failed then continue to next 1-Wire device
       if (!scratchPadReaded) continue;
 
       //so we finally can copy scratchpad to memory
-      copyScratchPad(addr);
+      CopyScratchPad(addr);
     }
   }
 }
 //------------------------------------------
-// function that get temperature from a DS18X20 and send it to Web Client (run convertion, get scratchpad then calculate temperature)
-void WebDS18B20Bus::getTemp(WiFiClient c, byte addr[]) {
+// function that get temperature from a DS18X20 and return it in JSON (run convertion, get scratchpad then calculate temperature)
+String DS18B20Bus::GetTempJSON(byte addr[]) {
 
   byte i, j;
   byte data[12];
 
-  startConvertT(addr);
+  StartConvertT(addr);
 
   //wait for conversion end (DS18B20 are powered)
-  while (read_bit() == 0) {
-    delay(10);
-  }
+  while (read_bit() == 0) delay(10);
 
-  //if read of scratchpad failed (3 times inside function) then return special fake value
-  if (!readScratchPad(addr, data)) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Temperature read failed"));
-    return;
-  }
-
+  //if read of scratchpad failed (3 times inside function) then return empty String
+  if (!ReadScratchPad(addr, data)) return String();
 
   // Convert the data to actual temperature
   // because the result is a 16 bit signed integer, it should
@@ -140,16 +135,16 @@ void WebDS18B20Bus::getTemp(WiFiClient c, byte addr[]) {
   //result is (float)raw / 16.0;
 
   //make JSON
-  String gtJSON(F("{\r\n\t\"Temperature\": "));
+  String gtJSON(F("{\"Temperature\": "));
   gtJSON.reserve(28);
-  gtJSON += String((float)raw / 16.0, 2) + F("\r\n}");
+  gtJSON += String((float)raw / 16.0, 2) + '}';
 
-  //Send client answer (build JSON structure while including temperature reading)
-  WebCore::SendHTTPResponse(c, 200, WebCore::json, gtJSON.c_str());
+  //return JSON temperature
+  return gtJSON;
 }
 //------------------------------------------
-// List DS18X20 sensor ROMCode and send it to Web Client
-void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
+// List DS18X20 sensor ROMCode and return it in JSON list
+String DS18B20Bus::GetRomCodeListJSON() {
 
   bool first = true;
   uint8_t romCode[8];
@@ -168,19 +163,19 @@ void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
     grclJSON.reserve(grclJSON.length() + 22);
 
     //populate JSON answer with romCode found
-    if (!first) grclJSON += ',';
+    if (!first) grclJSON += F(",\r\n");
     else first = false;
-    grclJSON += '\"';
+    grclJSON += '"';
     for (byte i = 0; i < 8; i++) {
       if (romCode[i] < 16)grclJSON += '0';
       grclJSON += String(romCode[i], HEX);
     }
-    grclJSON += F("\"\r\n");
+    grclJSON += '"';
   }
   //Finalize JSON structure
-  grclJSON += F("]}");
+  grclJSON += F("\r\n]}");
 
-  WebCore::SendHTTPResponse(c, 200, WebCore::json, grclJSON.c_str());
+  return grclJSON;
 }
 
 
@@ -195,8 +190,13 @@ void WebDS18B20Bus::getRomCodeList(WiFiClient c) {
 //----------------------------------------------------------------------
 
 //------------------------------------------
+//simple function that convert an hexadecimal char to byte
+byte WebDS18B20Buses::AsciiToHex(char c) {
+  return (c < 0x3A) ? (c - 0x30) : (c > 0x60 ? c - 0x57 : c - 0x37);
+}
+//------------------------------------------
 // return True if s contain only hexadecimal figure
-boolean WebDS18B20Buses::isROMCodeString(char* s) {
+boolean WebDS18B20Buses::isROMCodeString(const char* s) {
 
   if (strlen(s) != 16) return false;
   for (int i = 0; i < 16; i++) {
@@ -204,6 +204,15 @@ boolean WebDS18B20Buses::isROMCodeString(char* s) {
   }
   return true;
 }
+
+//------------------------------------------
+//return OneWire Status
+String WebDS18B20Buses::GetStatus() {
+  //nothing to send yet
+  return String();
+}
+
+
 //------------------------------------------
 //Init function to store number of Buses and pins associated
 void WebDS18B20Buses::Init(byte nbOfBuses, uint8_t owBusesPins[][2]) {
@@ -212,139 +221,108 @@ void WebDS18B20Buses::Init(byte nbOfBuses, uint8_t owBusesPins[][2]) {
   _initialized = (nbOfBuses > 0);
 
   for (byte i = 0; i < _nbOfBuses; i++) {
-    WebDS18B20Bus(_owBusesPins[i][0], _owBusesPins[i][1]).setupTempSensors();
+    DS18B20Bus(_owBusesPins[i][0], _owBusesPins[i][1]).SetupTempSensors();
   }
 }
 //------------------------------------------
-//Parse GET request to list temp sensor on a bus
-void WebDS18B20Buses::GetList(WiFiClient c, String &req) {
+void WebDS18B20Buses::InitWebServer(AsyncWebServer &server) {
 
-  //LOG
-  Serial.println(F("getList"));
+  server.on("/getList", HTTP_GET, [this](AsyncWebServerRequest * request) {
 
-  //check WebDS18B20Buses is initialized
-  if (!_initialized) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Buses not Initialized"));
-    return;
-  }
+    //check DS18B20Buses is initialized
+    if (!_initialized) {
+      request->send(400, F("text/html"), F("Buses not Initialized"));
+      return;
+    }
 
-  //check request structure
-  if (req.indexOf('?') == -1 || req.indexOf(F("? ")) != -1 || req.indexOf(F(" HTTP/")) == -1) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing parameter"));
-    return;
-  }
-  //keep only the part after '?' and before the final HTTP/1.1
-  String getDatas = req.substring(req.indexOf('?') + 1, req.indexOf(F(" HTTP/")));
-
-
-
-  //try to find busNumber
-  char busNumberA[2] = {0}; //length limited to 1 char
-  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("bus"), busNumberA, sizeof(busNumberA))) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
-    return;
-  }
-  //check string found
-  if (busNumberA[0] < 0x30 || busNumberA[0] > 0x39) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
-    return;
-  }
-  //convert busNumber
-  int busNumber = busNumberA[0] - 0x30;
-
-  //check busNumber
-  if (busNumber >= _nbOfBuses) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Wrong bus number"));
-    return;
-  }
+    //check bus param is there
+    if (!request->hasParam(F("bus"))) {
+      request->send(400, F("text/html"), F("Missing parameter"));
+      return;
+    }
+    //convert busNumber
+    int busNumber = request->getParam(F("bus"))->value().toInt();
+    //check value found
+    if ((busNumber == 0 && request->getParam(F("bus"))->value() != "0") || busNumber >= _nbOfBuses) {
+      request->send(400, F("text/html"), F("Incorrect bus number"));
+      return;
+    }
 
 #if ESP01_PLATFORM
-  Serial.flush();
-  delay(5);
-  Serial.end();
+    Serial.flush();
+    delay(5);
+    Serial.end();
 #endif
 
-  //Search for OneWire Temperature sensor
-  WebDS18B20Bus(_owBusesPins[busNumber][0], _owBusesPins[busNumber][1]).getRomCodeList(c);
+    //list OneWire Temperature sensors
+    request->send(200, F("text/json"), DS18B20Bus(_owBusesPins[busNumber][0], _owBusesPins[busNumber][1]).GetRomCodeListJSON());
 
 #if ESP01_PLATFORM
-  Serial.begin(SERIAL_SPEED);
+    Serial.begin(SERIAL_SPEED);
+#endif
+  });
+
+  server.on("/getTemp", HTTP_GET, [this](AsyncWebServerRequest * request) {
+
+    //check DS18B20Buses is initialized
+    if (!_initialized) {
+      request->send(400, F("text/html"), F("Buses not Initialized"));
+      return;
+    }
+
+    //check bus param
+    if (!request->hasParam(F("bus"))) {
+      request->send(400, F("text/html"), F("Missing parameter"));
+      return;
+    }
+    //convert busNumber
+    int busNumber = request->getParam(F("bus"))->value().toInt();
+    //check value found
+    if ((busNumber == 0 && request->getParam(F("bus"))->value() != "0") || busNumber >= _nbOfBuses) {
+      request->send(400, F("text/html"), F("Incorrect bus number"));
+      return;
+    }
+
+
+    //check ROMCode param
+    if (!request->hasParam(F("ROMCode"))) {
+      request->send(400, F("text/html"), F("Missing ROMCode"));
+      return;
+    }
+
+    const char* ROMCodeA = request->getParam(F("ROMCode"))->value().c_str();
+
+    if (!isROMCodeString(ROMCodeA)) {
+      request->send(400, F("text/html"), F("Incorrect ROMCode"));
+      return;
+    }
+
+    //Parse ROMCode
+    byte romCode[8];
+    for (byte i = 0; i < 8; i++) {
+      romCode[i] = (AsciiToHex(ROMCodeA[i * 2]) * 0x10) + AsciiToHex(ROMCodeA[(i * 2) + 1]);
+    }
+
+#if ESP01_PLATFORM
+    Serial.flush();
+    delay(5);
+    Serial.end();
 #endif
 
+    //Read Temperature
+    String temperatureJSON = DS18B20Bus(_owBusesPins[busNumber][0], _owBusesPins[busNumber][1]).GetTempJSON(romCode);
+
+    if (temperatureJSON.length() > 0) request->send(200, F("text/json"), temperatureJSON);
+    else request->send(500, F("text/html"), F("Read sensor failed"));
+
+#if ESP01_PLATFORM
+    Serial.begin(SERIAL_SPEED);
+#endif
+  });
+
+  server.on("/gs1", HTTP_GET, [this](AsyncWebServerRequest * request) {
+    request->send(200, F("text/json"), GetStatus());
+  });
 }
-//------------------------------------------
-//Parse GET request to read a Temperature
-void WebDS18B20Buses::GetTemp(WiFiClient c, String &req) {
-
-  //LOG
-  Serial.println(F("getTemp"));
-
-  //check WebDS18B20Buses is initialized
-  if (!_initialized) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Buses not Initialized"));
-    return;
-  }
-
-  //check request structure
-  if (req.indexOf('?') == -1 || req.indexOf(F("? ")) != -1 || req.indexOf(F(" HTTP/")) == -1) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Missing parameter"));
-    return;
-  }
-  //keep only the part after '?' and before the final HTTP/1.1
-  String getDatas = req.substring(req.indexOf('?') + 1, req.indexOf(F(" HTTP/")));
-
-  //try to find busNumber
-  char busNumberA[2] = {0}; //length limited to 1 char
-  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("bus"), busNumberA, sizeof(busNumberA))) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
-    return;
-  }
-  //check string found
-  if (busNumberA[0] < 0x30 || busNumberA[0] > 0x39) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect bus number"));
-    return;
-  }
-  //convert busNumber
-  int busNumber = busNumberA[0] - 0x30;
-
-  //check busNumber
-  if (busNumber >= _nbOfBuses) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Wrong bus number"));
-    return;
-  }
 
 
-
-  //try to find ROMCode
-  char ROMCodeA[17] = {0};
-  //check string found
-  if (!WebCore::FindParameterInURLEncodedDatas(getDatas.c_str(), F("ROMCode"), ROMCodeA, sizeof(ROMCodeA)) || !isROMCodeString(ROMCodeA)) {
-    WebCore::SendHTTPResponse(c, 400, WebCore::html, F("Incorrect ROMCode"));
-    return;
-  }
-
-  //Parse ROMCode
-  byte romCode[8];
-  for (byte i = 0; i < 8; i++) {
-    romCode[i] = (WebCore::AsciiToHex(ROMCodeA[i * 2]) * 0x10) + WebCore::AsciiToHex(ROMCodeA[(i * 2) + 1]);
-  }
-
-#if ESP01_PLATFORM
-  Serial.flush();
-  delay(5);
-  Serial.end();
-#endif
-
-  //Read Temperature
-  WebDS18B20Bus(_owBusesPins[busNumber][0], _owBusesPins[busNumber][1]).getTemp(c, romCode);
-
-#if ESP01_PLATFORM
-  Serial.begin(SERIAL_SPEED);
-#endif
-}
-//------------------------------------------
-//return OneWire Status
-void WebDS18B20Buses::GetStatus(WiFiClient c) {
-  //nothing to send yet
-  WebCore::SendHTTPResponse(c, 200);
-}

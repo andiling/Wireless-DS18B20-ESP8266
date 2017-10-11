@@ -1,71 +1,119 @@
 #include <ESP8266WiFi.h>
-#include <ArduinoOTA.h>
 #include <FS.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
+#include <ArduinoJson.h>
 
 //Please, have a look at WirelessDS18B20.h for information and configuration of Arduino project
 
-#include "WebCore.h"
-#include "WebConfig.h"
+#include "WifiMan.h"
+#include "Config.h"
 #include "WebDS18B20.h"
 
 #include "WirelessDS18B20.h"
 
-//Config object
-WebConfig webConfig;
 
+#include "data\fw.html.gz.h"
+#include "data\status.html.gz.h"
+#include "data\jquery-3.1.1.min.js.gz.h"
+#if DEVELOPPER_MODE
+#include "data\test.html.gz.h"
+#endif
+
+//Config object
+Config config;
+
+//WifiMan
+WifiMan wifiMan;
+
+//AsyncWebServer
+AsyncWebServer server(80);
+//flag to use from web update to reboot the ESP
+bool shouldReboot = false;
+
+//DS18B20 bus
 WebDS18B20Buses webDSBuses;
 
-//WiFi disconnection and GotIP handlers
-WiFiEventHandler wifiHandler1, wifiHandler2;
 
-//WiFiServer
-WiFiServer server(80);
+//-----------------------------------------------------------------------
+void InitSystemWebServer(AsyncWebServer &server) {
 
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)statushtmlgz, sizeof(statushtmlgz));
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
 
-//------------------------------------------
-void handleWifiClient(WiFiClient c) {
+  server.on("/gs0", HTTP_GET, [](AsyncWebServerRequest * request) {
 
-  Serial.println(F("handleWifiClient"));
+    unsigned long minutes = millis() / 60000;
+    char ssJSON[120];
+    snprintf_P(ssJSON, sizeof(ssJSON), PSTR("{\"b\":\"%s\",\"u\":\"%dd%dh%dm\""), VERSION, (byte)(minutes / 1440), (byte)(minutes / 60 % 24), (byte)(minutes % 60));
+    snprintf_P(ssJSON + strlen(ssJSON), sizeof(ssJSON) - strlen(ssJSON), PSTR(",\"ap\":\"%s\",\"ai\":\"%s\""), ((WiFi.getMode()&WIFI_AP) ? "on" : "off"), ((WiFi.getMode()&WIFI_AP) ? WiFi.softAPIP().toString().c_str() : "-"));
+    snprintf_P(ssJSON + strlen(ssJSON), sizeof(ssJSON) - strlen(ssJSON), PSTR(",\"sta\":\"%s\",\"stai\":\"%s\""), (config.ssid[0] ? "on" : "off"), (config.ssid[0] ? (WiFi.isConnected() ? WiFi.localIP().toString().c_str() : "Not Connected") : "-"));
+    snprintf_P(ssJSON + strlen(ssJSON), sizeof(ssJSON) - strlen(ssJSON), PSTR(",\"f\":%d}"), ESP.getFreeHeap());
+    request->send(200, F("text/json"), ssJSON);
+  });
+  server.on("/fw", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)fwhtmlgz, sizeof(fwhtmlgz));
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
 
-  //wait for client to send datas
-  int i = 0;
-  while (!c.available()) {
-    if (i == 10) {
-      //the client did not sent request in timely fashion
-      c.stop();
-      return;
+  server.on("/fw", HTTP_POST, [](AsyncWebServerRequest * request) {
+    shouldReboot = !Update.hasError();
+    if (shouldReboot) {
+      AsyncWebServerResponse *response = request->beginResponse(200, F("text/html"), F("Firmware Successfully Uploaded<script>setTimeout(function(){if('referrer' in document)window.location=document.referrer;},10000);</script>"));
+      response->addHeader("Connection", "close");
+      request->send(response);
     }
-    delay(100);
-    i++;
-  }
+    else {
+      AsyncWebServerResponse *response = request->beginResponse(500, F("text/html"), F("Firmware Update Error : End failed"));
+      response->addHeader("Connection", "close");
+      request->send(response);
+    }
+  }, [](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index) {
+      Serial.printf("Update Start: %s\n", filename.c_str());
+      Update.runAsync(true);
+      if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
+        Update.printError(Serial);
+      }
+    }
+    if (!Update.hasError()) {
+      if (Update.write(data, len) != len) {
+        Update.printError(Serial);
+      }
+    }
+    if (final) {
+      if (Update.end(true)) {
+        Serial.printf("Update Success: %uB\n", index + len);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
 
-  //read first line request
-  String req = c.readStringUntil('\n');
+  server.on("/jquery-3.1.1.min.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)jquery311minjsgz, sizeof(jquery311minjsgz));
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
 
-  if (req.startsWith(F("GET /fw HTTP/1."))) WebCore::GetNativeContent(c, WebCore::fw);
-  else if (req.startsWith(F("POST /fw HTTP/1."))) WebCore::PostFile(c, true); //true indicates that we upload a firmware
-  else if (req.startsWith(F("GET /jquery-3.1.1.min.js HTTP/1."))) WebCore::GetNativeContent(c, WebCore::jquery);
-  else if (req.startsWith(F("GET /config HTTP/1."))) WebCore::GetNativeContent(c, WebCore::config);
-  else if (req.startsWith(F("GET /status HTTP/1."))) WebCore::GetNativeContent(c, WebCore::status);
-  else if (req.startsWith(F("GET /gs0 HTTP/1."))) WebCore::GetSystemStatus(c);
+  server.onNotFound([](AsyncWebServerRequest * request) {
+    request->send(404);
+  });
+
 #if DEVELOPPER_MODE
-  else if (req.startsWith(F("GET /fwdev HTTP/1."))) WebCore::GetNativeContent(c, WebCore::fwdev);
-  else if (req.startsWith(F("GET /fl HTTP/1."))) WebCore::GetFileList(c);
-  else if (req.startsWith(F("POST /up HTTP/1."))) WebCore::PostFile(c);
-  else if (req.startsWith(F("GET /rm"))) WebCore::GetRemoveFile(c, req);
-#endif
-  else if (req.startsWith(F("GET /gc HTTP/1."))) webConfig.Get(c);
-  else if (req.startsWith(F("POST /sc HTTP/1."))) webConfig.Post(c);
-  else if (req.startsWith(F("GET /getList?"))) webDSBuses.GetList(c, req);
-  else if (req.startsWith(F("GET /getTemp?"))) webDSBuses.GetTemp(c, req);
-  else if (req.startsWith(F("GET /gs1 HTTP/1."))) webDSBuses.GetStatus(c);
-#if DEVELOPPER_MODE
-  else if (req.startsWith(F("GET "))) WebCore::GetFile(c, req);
-#endif
-  else WebCore::SendHTTPResponse(c, 404);
+  server.addHandler(new SPIFFSEditor("TODO", "TODO"));
 
-  c.flush();
-  c.stop();
+  server.on("/test", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)testhtmlgz, sizeof(testhtmlgz));
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+#endif
 }
 
 //-----------------------------------------------------------------------
@@ -100,118 +148,19 @@ void setup(void) {
   Serial.print(F("Start Config"));
 
   //initialize config with default values
-  webConfig.SetDefaultValues();
+  config.SetDefaultValues();
 
   //if skipExistingConfig is false then load the existing config
   if (!skipExistingConfig) {
-    if (!webConfig.Load()) {
-      Serial.println(F(" : Failed to load config!!!---------"));
-    } else {
-      Serial.println(F(" : OK"));
-    }
+    if (!config.Load()) Serial.println(F(" : Failed to load config!!!---------"));
+    else Serial.println(F(" : OK"));
   }
-  else {
-    Serial.println(F(" : OK (Config Skipped)"));
-  }
-
+  else Serial.println(F(" : OK (Config Skipped)"));
 
 
   Serial.print(F("Start WiFi : "));
-
-  //preconfigure AP
-  WiFi.softAP(DEFAULT_AP_SSID, DEFAULT_AP_PSK);
-  WiFi.enableAP(false); //it will be reactivated if required by Disco event that occur every second
-
-  //Enable or Disable STA if needed
-  if ((WiFi.getMode()&WIFI_STA) != (webConfig.ssid[0] != 0)) WiFi.enableSTA(webConfig.ssid[0] != 0);
-
-  //if STA is requested
-  if (webConfig.ssid[0]) {
-
-    //Set hostname
-    WiFi.hostname(webConfig.hostname);
-
-    //Enable STA
-    if (!(WiFi.getMode()&WIFI_STA)) WiFi.enableSTA(true);
-
-    //if not connected or config changed then reconnect
-    if (!WiFi.isConnected() || WiFi.SSID() != webConfig.ssid || WiFi.psk() != webConfig.password) {
-      WiFi.disconnect();
-      WiFi.begin(webConfig.ssid, webConfig.password);
-    }
-
-    //Wait 5sec for connection
-    for (int i = 0; i < 50 && !WiFi.isConnected(); i++) {
-      if ((i % 10) == 0) Serial.print(".");
-      delay(100);
-    }
-    if (!WiFi.isConnected()) Serial.println(F("Not Yet Connected"));
-    else {
-      Serial.print(F("OK("));
-      Serial.print(WiFi.localIP());
-      Serial.println(')');
-    }
-
-    //Configure handlers
-    wifiHandler1 = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected & evt) {
-      if (!(WiFi.getMode()&WIFI_AP)) {
-        WiFi.enableAP(true);
-        Serial.print(F("Disconnected : Enabling AP (")); Serial.print(WiFi.softAPIP()); Serial.println(')');
-      }
-    });
-    wifiHandler2 = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP & evt) {
-      if (WiFi.getMode()&WIFI_AP) WiFi.enableAP(false);
-      Serial.print(F("Connected : ")); Serial.println(WiFi.localIP());
-    });
-
-  }
-  else {
-    //Disable STA
-    if (WiFi.getMode()&WIFI_STA) WiFi.enableSTA(false);
-    //Enable AP
-    if (!(WiFi.getMode()&WIFI_AP)) WiFi.enableAP(true);
-    Serial.print(F(" AP mode(")); Serial.print(WiFi.softAPIP()); Serial.println(')');
-  }
-
-  //Switch to not persistent now
-  WiFi.persistent(false);
-
-
-
-#if DEVELOPPER_MODE
-  Serial.print(F("Load SPIFFS"));
-  if (SPIFFS.begin()) Serial.println(F(" : OK"));
-  else {
-    Serial.println(F(" : FAILED\r\nFormat SPIFFS"));
-    if (SPIFFS.format()) Serial.println(F(" : OK"));
-    else Serial.println(F(" : FAILED"));
-
-    ESP.reset();
-  }
-#endif
-
-#if OTA
-  Serial.print(F("Start OTA"));
-
-  //Setup and Start OTA
-  ArduinoOTA.setPassword(webConfig.otaPassword);
-  ArduinoOTA.onStart([]() {
-    Serial.println(F("-OTAStart-"));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.print(F("-OTA Error : ")); Serial.println(error);
-  });
-  ArduinoOTA.onProgress([](unsigned int current, unsigned int total) {
-    static byte lastProgress = 0;
-    byte progress = ((current * 100 / total) / 5) * 5;
-    if (lastProgress != progress) {
-      lastProgress = progress;
-      Serial.printf("%d%%\r\n", lastProgress);
-    }
-  });
-  ArduinoOTA.begin();
-  Serial.print(F(" : OK\r\n"));
-#endif
+  if (wifiMan.Init(config.ssid, config.password, config.hostname, DEFAULT_AP_SSID, DEFAULT_AP_PSK)) Serial.println(F("OK"));
+  else Serial.println(F("FAILED"));
 
   Serial.print(F("Start OneWire"));
 
@@ -220,18 +169,22 @@ void setup(void) {
   delay(5);
   Serial.end();
 
-  webConfig.numberOfBuses = 1;
-  webConfig.owBusesPins[0][0] = 3;
-  webConfig.owBusesPins[0][1] = 0;
+  config.numberOfBuses = 1;
+  config.owBusesPins[0][0] = 3;
+  config.owBusesPins[0][1] = 0;
 #endif
 
-  webDSBuses.Init(webConfig.numberOfBuses, webConfig.owBusesPins);
+  webDSBuses.Init(config.numberOfBuses, config.owBusesPins);
 
 #if ESP01_PLATFORM
   Serial.begin(SERIAL_SPEED);
 #endif
 
   Serial.print(F(" : OK\r\nStart WebServer"));
+
+  InitSystemWebServer(server);
+  config.InitWebServer(server, shouldReboot);
+  webDSBuses.InitWebServer(server);
   server.begin();
   Serial.println(F(" : OK"));
 
@@ -241,24 +194,15 @@ void setup(void) {
 //-----------------------------------------------------------------------
 // Main Loop function
 //-----------------------------------------------------------------------
-void loop(void) {
+void loop() {
 
-#if OTA
-  ArduinoOTA.handle();
-#endif
+  wifiMan.Run();
 
-  // Check if a client has connected
-  WiFiClient client = server.available();
-  if (client) {
-    //Prevent WiFi STA autoreconnect that break AP every second
-    if (!WiFi.isConnected()) WiFi.disconnect();
-
-    handleWifiClient(client);
-
-    //Restart STA reconnect
-    if (!WiFi.isConnected() && (webConfig.ssid[0] != 0)) WiFi.begin(webConfig.ssid, webConfig.password);
+  if (shouldReboot) {
+    Serial.println("Rebooting...");
+    delay(100);
+    ESP.restart();
   }
+
   yield();
 }
-
-
