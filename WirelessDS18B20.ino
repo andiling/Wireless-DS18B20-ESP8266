@@ -16,7 +16,7 @@
 
 #include "data\fw.html.gz.h"
 #include "data\status.html.gz.h"
-#include "data\jquery-3.1.1.min.js.gz.h"
+#include "data\jquery-3.2.1.min.js.gz.h"
 #if DEVELOPPER_MODE
 #include "data\test.html.gz.h"
 #endif
@@ -95,8 +95,8 @@ void InitSystemWebServer(AsyncWebServer &server) {
     }
   });
 
-  server.on("/jquery-3.1.1.min.js", HTTP_GET, [](AsyncWebServerRequest * request) {
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)jquery311minjsgz, sizeof(jquery311minjsgz));
+  server.on("/jquery-3.2.1.min.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), (const uint8_t*)jquery321minjsgz, sizeof(jquery321minjsgz));
     response->addHeader("Content-Encoding", "gzip");
     request->send(response);
   });

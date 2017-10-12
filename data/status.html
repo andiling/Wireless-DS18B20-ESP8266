@@ -17,11 +17,11 @@
     <h2 style="display:inline">OneWire Status</h2><span id="l2"><h2 style="display:inline"><b> Loading...</b></h2></span><br>
     NA
 
-    <script src="/jquery-3.1.1.min.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
     <script>
         if (!window.jQuery){
-            document.write('<script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.1.1.min.js"><\/script>');
-            document.getElementById('l').innerHTML='<h4 style="display:inline"> (JQuery loaded from Internet)</h4>';
+            document.write('<script type="text/javascript" src="/jquery-3.2.1.min.js"><\/script>');
+            document.getElementById('l').innerHTML='<h4 style="display:inline"> (JQuery loaded locally)</h4>';
         }
         else $("#l").fadeOut();
     </script>
