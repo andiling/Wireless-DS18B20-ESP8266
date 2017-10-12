@@ -185,6 +185,7 @@ void setup(void) {
   InitSystemWebServer(server);
   config.InitWebServer(server, shouldReboot);
   webDSBuses.InitWebServer(server);
+  DefaultHeaders::Instance().addHeader("Expires", "0"); //Add expires:0 to headers of all answer
   server.begin();
   Serial.println(F(" : OK"));
 
