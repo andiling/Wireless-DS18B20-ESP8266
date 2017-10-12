@@ -171,8 +171,8 @@ bool Config::SetFromParameters(AsyncWebServerRequest* request) {
   }
   else strcpy(tempConfig.ssid, request->getParam(F("s"), true)->value().c_str());
 
-  if (request->hasParam(F("p"), true) && request->getParam(F("p"), true)->value().length() < (sizeof(tempConfig.password) - 1)) strcpy(tempConfig.password, request->getParam(F("p"), true)->value().c_str());
-  if (request->hasParam(F("h"), true) && request->getParam(F("h"), true)->value().length() < (sizeof(tempConfig.hostname) - 1)) strcpy(tempConfig.hostname, request->getParam(F("h"), true)->value().c_str());
+  if (request->hasParam(F("p"), true) && request->getParam(F("p"), true)->value().length() < sizeof(tempConfig.password)) strcpy(tempConfig.password, request->getParam(F("p"), true)->value().c_str());
+  if (request->hasParam(F("h"), true) && request->getParam(F("h"), true)->value().length() < sizeof(tempConfig.hostname)) strcpy(tempConfig.hostname, request->getParam(F("h"), true)->value().c_str());
 
 
 #if !ESP01_PLATFORM
