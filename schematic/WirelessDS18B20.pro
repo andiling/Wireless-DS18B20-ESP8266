@@ -1,4 +1,4 @@
-update=12/11/2016 21:09:26
+update=31/10/2017 09:14:04
 version=1
 last_client=kicad
 [pcbnew]
@@ -60,3 +60,4 @@ LibName28=contrib
 LibName29=valves
 LibName30=ESP8266
 LibName31=lib/ESP8266
+LibName32=C:/Program Files/KiCad/share/kicad/library/switches
