@@ -60,10 +60,10 @@ WirelessDS18B20 offers you some webpages in order to configure it :
 
 ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
 
-   **ssid & password** : IDs of your Wifi Network
-   **hostname** : name of ESP on the network
-   **number of OneWire buses** : number of OneWire buses...
-   **buses pin nmbers** : pins for each oneWire buses (2 pins per OW bus)
+- **ssid & password** : IDs of your Wifi Network
+- **hostname** : name of ESP on the network
+- **number of OneWire buses** : number of OneWire buses...
+- **buses pin numbers** : pins for each oneWire buses (2 pins per OW bus)
 
 - `http://IP/status` return you the current status of the module :
 
