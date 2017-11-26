@@ -4,7 +4,7 @@ This project use an ESP8266 and some DS18B20 sensors on a 1-Wire bus to provide 
 
 The global idea of this project is that any system (like Jeedom) that's able to do an HTTP GET request and interpret JSON will get list of DS18B20 ROMcode available on buses or current temperature of a DS18B20 sensor.
 
-![getList](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/getList.jpg) ![getTemp](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/getTemp.jpg)
+![getList](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/getL.jpg) ![getTemp](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/getT.jpg)
 
 ## Build your 1-Wire bus
 
@@ -56,18 +56,19 @@ Connect to this network and then configure it.
 
 WirelessDS18B20 offers you some webpages in order to configure it :
 
+- `http://IP/` return you the current status of the module :
+
+![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
+
 - `http://IP/config` allows you to change configuration (Wifi and 1-Wire buses (only non-ESP01)) :
 
 ![config screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/config.png)
 
 - **ssid & password** : IDs of your Wifi Network
 - **hostname** : name of ESP on the network
+- **IP,GW,NetMask,DNS1&2** : Fixed IP configuration
 - **number of OneWire buses** : number of OneWire buses...
 - **buses pin numbers** : pins for each oneWire buses (2 pins per OW bus)
-
-- `http://IP/status` return you the current status of the module :
-
-![status screenshot](https://raw.github.com/J6B/Jeedom-ESP8266-Wireless-DS18B20/master/img/status.png)
 
 - `http://IP/fw` allows you to flash a new firmware version :
 
