@@ -1,3 +1,6 @@
+# ---->Moved to Domochip/Wireless-DS18B20-Bus<----
+----> https://github.com/Domochip/Wireless-DS18B20-Bus <----
+
 # WirelessDS18B20
 
 This project use an ESP8266 and some DS18B20 sensors on a 1-Wire bus to provide temperatures in JSON format (Jeedom compatible).
